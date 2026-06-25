@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "soha-hermes-agent.fullname" . }}
+  labels:
+    {{- include "soha-hermes-agent.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "soha-hermes-agent.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "soha-hermes-agent.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/part-of: opensoha
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: soha-hermes-agent
+          image: {{ include "soha-hermes-agent.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: 18080
+          env:
+            - name: SOHA_AGENT_CONTROL_PLANE_BASE_URL
+              value: {{ .Values.controlPlane.baseUrl | quote }}
+            - name: SOHA_AGENT_CONTROL_PLANE_BEARER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "soha-hermes-agent.fullname" . }}-secrets
+                  key: control-plane-bearer-token
+            - name: SOHA_AGENT_CONTROL_PLANE_AGENT_ID
+              value: {{ .Values.controlPlane.agentId | quote }}
+            - name: SOHA_AGENT_CONTROL_PLANE_PROVIDER_KINDS
+              value: agent_runtime_only
+            - name: SOHA_AGENT_CONTROL_PLANE_RUNTIME_ENDPOINT
+              value: {{ .Values.controlPlane.runtimeEndpoint | quote }}
+            - name: SOHA_AGENT_CONTROL_PLANE_DOCKER_ENABLED
+              value: "false"
+            - name: SOHA_AGENT_CONTROL_PLANE_AGENT_RUNTIME_ENABLED
+              value: "true"
+            - name: SOHA_AGENT_CONTROL_PLANE_AGENT_RUNTIME_WORKER_ID
+              value: {{ .Values.controlPlane.workerId | quote }}
+            - name: SOHA_AGENT_CONTROL_PLANE_AGENT_RUNTIME_PROVIDER_IDS
+              value: {{ join "," .Values.controlPlane.providerIds | quote }}
+            - name: SOHA_AGENT_CONTROL_PLANE_AGENT_RUNTIME_PROVIDER_KINDS
+              value: {{ join "," .Values.controlPlane.providerKinds | quote }}
+            - name: SOHA_AGENT_CONTROL_PLANE_AGENT_RUNTIME_HERMES_COMMAND
+              value: {{ .Values.controlPlane.hermesCommand | quote }}
+            - name: SOHA_AGENT_CONTROL_PLANE_AGENT_RUNTIME_WORKSPACE_ROOT
+              value: {{ .Values.controlPlane.workspaceRoot | quote }}
+            - name: SOHA_AGENT_KUBERNETES_ENABLED
+              value: "false"
+          volumeMounts:
+            - name: runtime
+              mountPath: {{ .Values.controlPlane.workspaceRoot | quote }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: runtime
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "soha-hermes-agent.fullname" . }}-runtime
+          {{- else }}
+          emptyDir: {}
+          {{- end }}

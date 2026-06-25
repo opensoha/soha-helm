@@ -1,0 +1,44 @@
+name: helm-repo
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/helm-repo.yml"
+      - "Makefile"
+      - "artifacthub-repo.yml"
+      - "charts/**"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/helm-repo.yml"
+      - "Makefile"
+      - "artifacthub-repo.yml"
+      - "charts/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: azure/setup-helm@v5
+        with:
+          version: v4.2.0
+      - name: Build and verify Helm repository
+        run: make verify
+      - name: Publish packaged charts
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- index.yaml '*.tgz'; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.yaml *.tgz
+          git commit -m "chore: publish helm charts"
+          git push

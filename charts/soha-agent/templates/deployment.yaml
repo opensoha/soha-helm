@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "soha-agent.fullname" . }}
+  labels:
+    {{- include "soha-agent.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "soha-agent.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "soha-agent.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/part-of: opensoha
+    spec:
+      serviceAccountName: {{ include "soha-agent.serviceAccountName" . }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: soha-agent
+          image: {{ include "soha-agent.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 18080
+          env:
+            - name: SOHA_AGENT_CONFIG_FILE
+              value: /etc/soha-agent/agent.config.yaml
+            - name: SOHA_AGENT_CONTROL_PLANE_BEARER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "soha-agent.fullname" . }}-secrets
+                  key: control-plane-bearer-token
+            - name: SOHA_AGENT_AUTH_BEARER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "soha-agent.fullname" . }}-secrets
+                  key: agent-bearer-token
+          volumeMounts:
+            - name: config
+              mountPath: /etc/soha-agent
+              readOnly: true
+            - name: state
+              mountPath: /var/log/soha-agent
+              subPath: logs
+            - name: state
+              mountPath: /var/lib/soha-agent
+              subPath: data
+          readinessProbe:
+            httpGet:
+              path: /api/v1/healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "soha-agent.fullname" . }}-config
+        - name: state
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "soha-agent.fullname" . }}-state
+          {{- else }}
+          emptyDir: {}
+          {{- end }}

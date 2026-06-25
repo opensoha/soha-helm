@@ -1,0 +1,112 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "soha-agent.fullname" . }}-config
+  labels:
+    {{- include "soha-agent.labels" . | nindent 4 }}
+data:
+  agent.config.yaml: |
+    app:
+      name: soha-agent
+      env: {{ .Values.config.appEnv | quote }}
+    http:
+      addr: :18080
+      base_path: /api/v1
+      read_timeout: 15s
+      write_timeout: 15s
+{{- if .Values.config.allowedOrigins }}
+      allowed_origins:
+{{- range .Values.config.allowedOrigins }}
+        - {{ . | quote }}
+{{- end }}
+{{- else }}
+      allowed_origins: []
+{{- end }}
+    logger:
+      level: {{ .Values.config.loggerLevel | quote }}
+      format: {{ .Values.config.loggerFormat | quote }}
+    auth:
+      bearer_token: ""
+    security:
+      allowed_actions:
+{{- range .Values.config.security.allowedActions }}
+        - {{ . | quote }}
+{{- end }}
+    audit:
+      file_path: /var/log/soha-agent/actions.jsonl
+    control_plane:
+      enabled: {{ .Values.config.controlPlane.enabled }}
+      base_url: {{ .Values.config.controlPlane.baseUrl | quote }}
+      bearer_token: ""
+      agent_id: {{ .Values.config.controlPlane.agentId | quote }}
+      runtime_endpoint: {{ .Values.config.controlPlane.runtimeEndpoint | quote }}
+      poll_interval: {{ .Values.config.controlPlane.pollInterval | quote }}
+      max_concurrency: {{ .Values.config.controlPlane.maxConcurrency }}
+      default_timeout: {{ .Values.config.controlPlane.defaultTimeout | quote }}
+      callback_retry:
+        max_attempts: 3
+        backoff: 500ms
+      provider_kinds:
+{{- range .Values.config.controlPlane.providerKinds }}
+        - {{ . | quote }}
+{{- end }}
+      workspace_root: {{ .Values.config.controlPlane.workspaceRoot | quote }}
+      docker:
+        enabled: {{ .Values.config.controlPlane.docker.enabled }}
+        worker_id: {{ .Values.config.controlPlane.docker.workerId | quote }}
+{{- if .Values.config.controlPlane.docker.hostIds }}
+        host_ids:
+{{- range .Values.config.controlPlane.docker.hostIds }}
+          - {{ . | quote }}
+{{- end }}
+{{- else }}
+        host_ids: []
+{{- end }}
+{{- if .Values.config.controlPlane.docker.operationKinds }}
+        operation_kinds:
+{{- range .Values.config.controlPlane.docker.operationKinds }}
+          - {{ . | quote }}
+{{- end }}
+{{- else }}
+        operation_kinds: []
+{{- end }}
+        compose_root: {{ .Values.config.controlPlane.docker.composeRoot | quote }}
+        poll_interval: {{ .Values.config.controlPlane.docker.pollInterval | quote }}
+      agent_runtime:
+        enabled: {{ .Values.config.controlPlane.agentRuntime.enabled }}
+        worker_id: {{ .Values.config.controlPlane.agentRuntime.workerId | quote }}
+{{- if .Values.config.controlPlane.agentRuntime.providerIds }}
+        provider_ids:
+{{- range .Values.config.controlPlane.agentRuntime.providerIds }}
+          - {{ . | quote }}
+{{- end }}
+{{- else }}
+        provider_ids: []
+{{- end }}
+{{- if .Values.config.controlPlane.agentRuntime.providerKinds }}
+        provider_kinds:
+{{- range .Values.config.controlPlane.agentRuntime.providerKinds }}
+          - {{ . | quote }}
+{{- end }}
+{{- else }}
+        provider_kinds: []
+{{- end }}
+        hermes_command: {{ .Values.config.controlPlane.agentRuntime.hermesCommand | quote }}
+        workspace_root: {{ .Values.config.controlPlane.agentRuntime.workspaceRoot | quote }}
+        poll_interval: {{ .Values.config.controlPlane.agentRuntime.pollInterval | quote }}
+{{- if .Values.config.controlPlane.agentRuntime.providers }}
+        providers:
+          {{- toYaml .Values.config.controlPlane.agentRuntime.providers | nindent 10 }}
+{{- else }}
+        providers: {}
+{{- end }}
+    kubernetes:
+      enabled: {{ .Values.config.kubernetes.enabled }}
+      id: {{ .Values.config.kubernetes.id | quote }}
+      name: {{ .Values.config.kubernetes.name | quote }}
+      kubeconfig: ""
+      context: ""
+      region: {{ .Values.config.kubernetes.region | quote }}
+      environment: {{ .Values.config.kubernetes.environment | quote }}
+      labels:
+        {{- toYaml .Values.config.kubernetes.labels | nindent 8 }}

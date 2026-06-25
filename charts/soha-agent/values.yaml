@@ -1,0 +1,106 @@
+image:
+  repository: yshanchui/soha-agent
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+replicaCount: 1
+
+service:
+  type: ClusterIP
+  port: 18080
+
+rbac:
+  create: true
+  clusterRoleName: ""
+
+serviceAccount:
+  create: true
+  name: ""
+
+secrets:
+  # Required for endpoints served by the agent.
+  agentBearerToken: ""
+  # Required for claim/callback requests to the Soha control plane.
+  controlPlaneBearerToken: ""
+
+config:
+  appEnv: production
+  loggerLevel: info
+  loggerFormat: json
+  allowedOrigins: []
+  controlPlane:
+    enabled: true
+    baseUrl: https://soha.example.com
+    agentId: production-agent
+    runtimeEndpoint: http://soha-agent.soha-agent.svc.cluster.local:18080
+    pollInterval: 5s
+    maxConcurrency: 2
+    defaultTimeout: 30m
+    providerKinds:
+      - ci_agent_runner
+    workspaceRoot: /var/lib/soha-agent
+    docker:
+      enabled: false
+      workerId: ""
+      hostIds: []
+      operationKinds: []
+      composeRoot: /var/lib/soha-agent/docker
+      pollInterval: 5s
+    agentRuntime:
+      enabled: false
+      workerId: ""
+      providerIds: []
+      providerKinds: []
+      hermesCommand: hermes
+      workspaceRoot: /var/lib/soha-agent/runtime
+      pollInterval: 5s
+      providers: {}
+  kubernetes:
+    enabled: true
+    id: production-agent
+    name: Production Agent
+    region: production
+    environment: production
+    labels:
+      provider: agent
+      owner: platform
+  security:
+    allowedActions:
+      - platform.deployments.restart
+      - platform.deployments.scale
+      - platform.deployments.image
+      - platform.deployments.rollback
+      - platform.statefulsets.restart
+      - platform.statefulsets.scale
+      - platform.daemonsets.restart
+
+persistence:
+  enabled: true
+  storageSize: 10Gi
+  storageClassName: ""
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi
+
+podSecurityContext:
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  fsGroupChangePolicy: OnRootMismatch
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL

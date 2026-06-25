@@ -1,6 +1,6 @@
 # OpenSoha Helm Charts
 
-This repository is the static Helm repository for OpenSoha charts.
+This repository owns and publishes the OpenSoha Helm charts.
 
 ## Usage
 
@@ -51,13 +51,13 @@ COPY --from=yshanchui/soha-cli:v0.1.0 /usr/local/bin/soha /usr/local/bin/soha
 
 ## Publishing
 
-Generate the repository contents from the main `soha` repository:
+Chart sources live under `charts/`. On every push to `main` that changes chart sources, GitHub Actions runs:
 
 ```bash
-make deploy-helm-repo HELM_REPO_URL=https://raw.githubusercontent.com/opensoha/soha-helm/main
+make verify
 ```
 
-Then copy `dist/helm-repo/*` into this repository root. Artifact Hub indexes `https://raw.githubusercontent.com/opensoha/soha-helm/main`; it does not host the chart archives.
+If the generated `index.yaml` or chart archives changed, the workflow commits them back to this repository. Artifact Hub indexes `https://raw.githubusercontent.com/opensoha/soha-helm/main`; it does not host the chart archives.
 
 ## Artifact Hub
 

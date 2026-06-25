@@ -14,9 +14,9 @@ entries:
           url: https://docs.opensoha.dev/
     apiVersion: v2
     appVersion: 0.1.0
-    created: "2026-06-25T12:12:21.07109+08:00"
+    created: "2026-06-25T14:54:08.402331+08:00"
     description: OpenSoha control plane with embedded web console and optional PostgreSQL.
-    digest: b67839f26f6bcac729411894e7ba334d506de81ed86b2c72e0a4216d7f4039c3
+    digest: c8c7b37a42b8de16632b72f66999c2e37ba942204b0efa738e0dc94c0a34d07b
     home: https://github.com/opensoha/soha
     keywords:
     - opensoha
@@ -43,9 +43,9 @@ entries:
           url: https://github.com/opensoha/soha-agent
     apiVersion: v2
     appVersion: 0.1.0
-    created: "2026-06-25T12:12:21.071383+08:00"
+    created: "2026-06-25T14:54:08.402596+08:00"
     description: OpenSoha cluster agent for remote Kubernetes operations.
-    digest: eae1c450c13ae559f3b8a451cf8c46dd802cfcfca7bcdfabb42d451748b66e13
+    digest: 8c8463b3705fe3f93ba2761b3747a8f058b5aefce06d631308ec3fd5a7f71de1
     home: https://github.com/opensoha/soha-agent
     keywords:
     - opensoha
@@ -71,9 +71,9 @@ entries:
           url: https://github.com/opensoha/soha-agent
     apiVersion: v2
     appVersion: 0.1.0
-    created: "2026-06-25T12:12:21.071558+08:00"
+    created: "2026-06-25T14:54:08.402746+08:00"
     description: OpenSoha Hermes Agent Runtime runner.
-    digest: 0e4074a50a3b92286131d8a97e6cb25d8ab4d6a8e0e5f0d7beabf624bb2ed24e
+    digest: 4fe4ad4e72a4f3131b6d1c1f7830e6601787cfe2f36e06e4ff10fb09d1ae2d8b
     home: https://github.com/opensoha/soha-agent
     keywords:
     - opensoha
@@ -90,4 +90,4 @@ entries:
     urls:
     - soha-hermes-agent-0.1.0.tgz
     version: 0.1.0
-generated: "2026-06-25T12:12:21.070023+08:00"
+generated: "2026-06-25T14:54:08.401378+08:00"

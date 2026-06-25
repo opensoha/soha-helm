@@ -1,0 +1,49 @@
+image:
+  repository: yshanchui/soha-hermes-agent
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+replicaCount: 1
+
+service:
+  type: ClusterIP
+  port: 18080
+
+secrets:
+  # Required for claim/callback requests to the Soha control plane.
+  controlPlaneBearerToken: ""
+
+controlPlane:
+  baseUrl: http://soha:8080
+  agentId: hermes-agent-runner
+  runtimeEndpoint: http://soha-hermes-agent:18080
+  workerId: hermes-agent-runner
+  providerIds:
+    - hermes
+  providerKinds:
+    - hermes
+  hermesCommand: hermes
+  workspaceRoot: /var/lib/soha-agent-runtime
+
+persistence:
+  enabled: true
+  storageSize: 10Gi
+  storageClassName: ""
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "2"
+    memory: 2Gi
+
+podSecurityContext:
+  runAsNonRoot: false
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext: {}

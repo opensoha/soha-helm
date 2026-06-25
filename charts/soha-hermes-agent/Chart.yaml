@@ -1,0 +1,23 @@
+apiVersion: v2
+name: soha-hermes-agent
+description: OpenSoha Hermes Agent Runtime runner.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://github.com/opensoha/soha-agent
+sources:
+  - https://github.com/opensoha/soha-agent
+maintainers:
+  - name: OpenSoha
+    url: https://github.com/opensoha
+keywords:
+  - opensoha
+  - soha-hermes-agent
+  - hermes
+  - ai-runtime
+annotations:
+  artifacthub.io/category: ai-machine-learning
+  artifacthub.io/license: Apache-2.0
+  artifacthub.io/links: |
+    - name: source
+      url: https://github.com/opensoha/soha-agent

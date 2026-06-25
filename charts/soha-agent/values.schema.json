@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "image": {
+      "type": "object",
+      "properties": {
+        "repository": { "type": "string", "minLength": 1 },
+        "tag": { "type": "string" },
+        "pullPolicy": { "type": "string", "enum": ["Always", "IfNotPresent", "Never"] }
+      }
+    },
+    "replicaCount": { "type": "integer", "minimum": 1 },
+    "secrets": {
+      "type": "object",
+      "properties": {
+        "agentBearerToken": { "$ref": "#/definitions/requiredSecret" },
+        "controlPlaneBearerToken": { "$ref": "#/definitions/requiredSecret" }
+      }
+    },
+    "config": {
+      "type": "object",
+      "properties": {
+        "controlPlane": {
+          "type": "object",
+          "properties": {
+            "baseUrl": { "type": "string", "minLength": 1 },
+            "agentId": { "type": "string", "minLength": 1 },
+            "runtimeEndpoint": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "requiredSecret": {
+      "type": "string",
+      "minLength": 12,
+      "not": {
+        "anyOf": [
+          { "enum": ["change-me", "changeme", "demo-agent-token", "demo-execution-runner-token"] },
+          { "pattern": "(?i)replace[-_]?with" },
+          { "pattern": "(?i)placeholder" }
+        ]
+      }
+    }
+  }
+}

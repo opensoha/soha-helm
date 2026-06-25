@@ -5,7 +5,7 @@ This repository is the static Helm repository for OpenSoha charts.
 ## Usage
 
 ```bash
-helm repo add opensoha https://opensoha.github.io/soha-helm
+helm repo add opensoha https://raw.githubusercontent.com/opensoha/soha-helm/main
 helm repo update
 helm search repo opensoha
 ```
@@ -54,7 +54,17 @@ COPY --from=yshanchui/soha-cli:v0.1.0 /usr/local/bin/soha /usr/local/bin/soha
 Generate the repository contents from the main `soha` repository:
 
 ```bash
-make deploy-helm-repo HELM_REPO_URL=https://opensoha.github.io/soha-helm
+make deploy-helm-repo HELM_REPO_URL=https://raw.githubusercontent.com/opensoha/soha-helm/main
 ```
 
-Then copy `dist/helm-repo/*` into this repository root and publish it through GitHub Pages. Artifact Hub indexes `https://opensoha.github.io/soha-helm`; it does not host the chart archives.
+Then copy `dist/helm-repo/*` into this repository root. Artifact Hub indexes `https://raw.githubusercontent.com/opensoha/soha-helm/main`; it does not host the chart archives.
+
+## Artifact Hub
+
+Add a Helm repository in Artifact Hub with:
+
+- Kind: `Helm charts`
+- Name: `opensoha`
+- URL: `https://raw.githubusercontent.com/opensoha/soha-helm/main`
+
+Ownership metadata lives in `artifacthub-repo.yml`. Keep the owner email current so Artifact Hub can verify the repository claim.

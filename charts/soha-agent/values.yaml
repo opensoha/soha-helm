@@ -1,6 +1,6 @@
 image:
   repository: yshanchui/soha-agent
-  tag: ""
+  tag: latest
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []

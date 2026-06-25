@@ -1,6 +1,6 @@
 image:
   repository: yshanchui/soha-hermes-agent
-  tag: ""
+  tag: latest
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []

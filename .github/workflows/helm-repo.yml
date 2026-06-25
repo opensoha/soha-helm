@@ -25,20 +25,43 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: azure/setup-helm@v5
         with:
           version: v4.2.0
       - name: Build and verify Helm repository
         run: make verify
-      - name: Publish packaged charts
+      - name: Configure Git
         if: github.event_name != 'pull_request'
         run: |
           set -euo pipefail
-          if git diff --quiet -- index.yaml '*.tgz'; then
-            exit 0
-          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.yaml *.tgz
-          git commit -m "chore: publish helm charts"
-          git push
+      - name: Initialize chart index branch
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+            exit 0
+          fi
+          worktree="$(mktemp -d)"
+          git worktree add --detach "$worktree"
+          cd "$worktree"
+          git switch --orphan gh-pages
+          git rm -rf . >/dev/null 2>&1 || true
+          cp "$GITHUB_WORKSPACE"/artifacthub-repo.yml .
+          cp "$GITHUB_WORKSPACE"/README.md .
+          touch .nojekyll
+          git add .nojekyll README.md artifacthub-repo.yml
+          git commit -m "chore: initialize helm chart index"
+          git push origin gh-pages
+      - name: Release Helm charts
+        if: github.event_name != 'pull_request'
+        uses: helm/chart-releaser-action@v1.7.0
+        with:
+          skip_existing: true
+          pages_branch: gh-pages
+          mark_as_latest: false
+        env:
+          CR_TOKEN: ${{ github.token }}

@@ -5,7 +5,7 @@ This repository owns and publishes the OpenSoha Helm charts.
 ## Usage
 
 ```bash
-helm repo add opensoha https://raw.githubusercontent.com/opensoha/soha-helm/main
+helm repo add opensoha https://raw.githubusercontent.com/opensoha/soha-helm/gh-pages
 helm repo update
 helm search repo opensoha
 ```
@@ -57,7 +57,7 @@ Chart sources live under `charts/`. On every push to `main` that changes chart s
 make verify
 ```
 
-If the generated `index.yaml` or chart archives changed, the workflow commits them back to this repository. Artifact Hub indexes `https://raw.githubusercontent.com/opensoha/soha-helm/main`; it does not host the chart archives.
+If a chart version changed, the workflow uploads chart archives to GitHub Releases and updates `index.yaml` on the `gh-pages` branch. Artifact Hub indexes `https://raw.githubusercontent.com/opensoha/soha-helm/gh-pages`; it does not host the chart archives.
 
 ## Artifact Hub
 
@@ -65,6 +65,6 @@ Add a Helm repository in Artifact Hub with:
 
 - Kind: `Helm charts`
 - Name: `opensoha`
-- URL: `https://raw.githubusercontent.com/opensoha/soha-helm/main`
+- URL: `https://raw.githubusercontent.com/opensoha/soha-helm/gh-pages`
 
 Ownership metadata lives in `artifacthub-repo.yml`. Keep the owner email current so Artifact Hub can verify the repository claim.

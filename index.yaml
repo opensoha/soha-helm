@@ -1,0 +1,93 @@
+apiVersion: v1
+entries:
+  soha:
+  - annotations:
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/changes: |
+        - kind: added
+          description: Initial public Helm chart.
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: source
+          url: https://github.com/opensoha/soha
+        - name: docs
+          url: https://docs.opensoha.dev/
+    apiVersion: v2
+    appVersion: 0.1.0
+    created: "2026-06-25T02:06:54.172269+08:00"
+    description: OpenSoha control plane with embedded web console and optional PostgreSQL.
+    digest: b67839f26f6bcac729411894e7ba334d506de81ed86b2c72e0a4216d7f4039c3
+    home: https://github.com/opensoha/soha
+    keywords:
+    - opensoha
+    - soha
+    - ai-gateway
+    - delivery
+    - kubernetes
+    maintainers:
+    - name: OpenSoha
+      url: https://github.com/opensoha
+    name: soha
+    sources:
+    - https://github.com/opensoha/soha
+    type: application
+    urls:
+    - https://opensoha.github.io/soha-helm/soha-0.1.0.tgz
+    version: 0.1.0
+  soha-agent:
+  - annotations:
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: source
+          url: https://github.com/opensoha/soha-agent
+    apiVersion: v2
+    appVersion: 0.1.0
+    created: "2026-06-25T02:06:54.172861+08:00"
+    description: OpenSoha cluster agent for remote Kubernetes operations.
+    digest: eae1c450c13ae559f3b8a451cf8c46dd802cfcfca7bcdfabb42d451748b66e13
+    home: https://github.com/opensoha/soha-agent
+    keywords:
+    - opensoha
+    - soha-agent
+    - kubernetes
+    - delivery
+    maintainers:
+    - name: OpenSoha
+      url: https://github.com/opensoha
+    name: soha-agent
+    sources:
+    - https://github.com/opensoha/soha-agent
+    type: application
+    urls:
+    - https://opensoha.github.io/soha-helm/soha-agent-0.1.0.tgz
+    version: 0.1.0
+  soha-hermes-agent:
+  - annotations:
+      artifacthub.io/category: ai-machine-learning
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: source
+          url: https://github.com/opensoha/soha-agent
+    apiVersion: v2
+    appVersion: 0.1.0
+    created: "2026-06-25T02:06:54.173225+08:00"
+    description: OpenSoha Hermes Agent Runtime runner.
+    digest: 0e4074a50a3b92286131d8a97e6cb25d8ab4d6a8e0e5f0d7beabf624bb2ed24e
+    home: https://github.com/opensoha/soha-agent
+    keywords:
+    - opensoha
+    - soha-hermes-agent
+    - hermes
+    - ai-runtime
+    maintainers:
+    - name: OpenSoha
+      url: https://github.com/opensoha
+    name: soha-hermes-agent
+    sources:
+    - https://github.com/opensoha/soha-agent
+    type: application
+    urls:
+    - https://opensoha.github.io/soha-helm/soha-hermes-agent-0.1.0.tgz
+    version: 0.1.0
+generated: "2026-06-25T02:06:54.169943+08:00"

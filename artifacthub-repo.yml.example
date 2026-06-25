@@ -1,0 +1,5 @@
+# Copy this file to artifacthub-repo.yml after replacing the maintainer email
+# when claiming this Helm repository in Artifact Hub.
+owners:
+  - name: OpenSoha Maintainers
+    email: maintainers@example.com

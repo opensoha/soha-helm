@@ -38,24 +38,33 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-      - name: Initialize chart index branch
+      - name: Sync chart index metadata
         if: github.event_name != 'pull_request'
         run: |
           set -euo pipefail
-          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
-            exit 0
-          fi
           worktree="$(mktemp -d)"
-          git worktree add --detach "$worktree"
+          create_branch=0
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+            git fetch origin gh-pages
+            git worktree add -B gh-pages "$worktree" origin/gh-pages
+          else
+            create_branch=1
+            git worktree add --detach "$worktree"
+          fi
           cd "$worktree"
-          git switch --orphan gh-pages
-          git rm -rf . >/dev/null 2>&1 || true
+          if [ "$create_branch" = 1 ]; then
+            git switch --orphan gh-pages
+            git rm -rf . >/dev/null 2>&1 || true
+          fi
           cp "$GITHUB_WORKSPACE"/artifacthub-repo.yml .
           cp "$GITHUB_WORKSPACE"/README.md .
           touch .nojekyll
           git add .nojekyll README.md artifacthub-repo.yml
-          git commit -m "chore: initialize helm chart index"
-          git push origin gh-pages
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "chore: sync helm repo metadata"
+          git push origin HEAD:gh-pages
       - name: Release Helm charts
         if: github.event_name != 'pull_request'
         uses: helm/chart-releaser-action@v1.7.0

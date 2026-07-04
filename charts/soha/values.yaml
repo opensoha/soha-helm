@@ -101,8 +101,8 @@ config:
     aiGateway:
       enabled: true
     virtualization:
-      # Enable only after setting config.security.credentialEncryptionKey to a
-      # stable value. PVE credentials cannot be decrypted if this key rotates.
+      # credentialEncryptionKey is generated on first install when empty and
+      # then reused from the live Secret during upgrades.
       enabled: false
     docker:
       enabled: true
@@ -125,7 +125,7 @@ config:
         timeout: 500ms
   seedDefaults: true
   security:
-    # Required when config.modules.virtualization.enabled=true.
+    # Generated on first install when empty, then reused from the live Secret during upgrades.
     credentialEncryptionKey: ""
     secretProvider: ""
 

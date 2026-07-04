@@ -123,48 +123,6 @@
           }
         }
       }
-    },
-    {
-      "if": {
-        "properties": {
-          "config": {
-            "properties": {
-              "modules": {
-                "properties": {
-                  "virtualization": {
-                    "properties": {
-                      "enabled": {
-                        "const": true
-                      }
-                    },
-                    "required": ["enabled"]
-                  }
-                },
-                "required": ["virtualization"]
-              }
-            },
-            "required": ["modules"]
-          }
-        },
-        "required": ["config"]
-      },
-      "then": {
-        "properties": {
-          "config": {
-            "properties": {
-              "security": {
-                "properties": {
-                  "credentialEncryptionKey": {
-                    "$ref": "#/definitions/requiredCredentialKey"
-                  }
-                },
-                "required": ["credentialEncryptionKey"]
-              }
-            },
-            "required": ["security"]
-          }
-        }
-      }
     }
   ],
   "definitions": {
@@ -219,17 +177,6 @@
               "$ref": "#/definitions/notPlaceholder"
             }
           ]
-        }
-      ]
-    },
-    "requiredCredentialKey": {
-      "type": "string",
-      "allOf": [
-        {
-          "minLength": 32
-        },
-        {
-          "$ref": "#/definitions/notPlaceholder"
         }
       ]
     },

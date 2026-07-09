@@ -67,7 +67,7 @@ config:
     refreshTTL: 168h
     oidc:
       enabled: false
-      providerName: default
+      providerName: ""
       issuer: ""
       clientId: ""
       clientSecret: ""

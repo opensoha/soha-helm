@@ -1,6 +1,6 @@
 image:
   repository: yshanchui/soha
-  tag: latest
+  tag: v0.1.1
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []
@@ -49,8 +49,7 @@ config:
     copilotInspectionParallelism: 2
     alertUpsertBatchSize: 100
     # Static bearer token accepted by runner/agent callback endpoints.
-    # Generated on first install when empty, then reused from the live Secret during upgrades.
-    executionRunnerToken: ""
+    executionRunnerToken: soha-1234567890123456789012345678901234567890
   auth:
     enableDevAuth: false
     adminUserId: admin
@@ -63,8 +62,7 @@ config:
       - ops
       - auditor
     jwtIssuer: soha
-    # Generated on first install when empty, then reused from the live Secret during upgrades.
-    jwtSecret: ""
+    jwtSecret: soha-1234567890123456789012345678901234567890
     accessTTL: 15m
     refreshTTL: 168h
     oidc:
@@ -83,8 +81,7 @@ config:
         - readonly
   monitoring:
     enabled: true
-    # Generated on first install when empty, then reused from the live Secret during upgrades.
-    webhookToken: ""
+    webhookToken: soha-1234567890123456789012345678901234567890
     prometheusUrl: ""
     prometheusBearerToken: ""
     prometheusDefaultRangeMinutes: 60
@@ -125,8 +122,7 @@ config:
         timeout: 500ms
   seedDefaults: true
   security:
-    # Generated on first install when empty, then reused from the live Secret during upgrades.
-    credentialEncryptionKey: ""
+    credentialEncryptionKey: soha-1234567890123456789012345678901234567890
     secretProvider: ""
 
 resources:

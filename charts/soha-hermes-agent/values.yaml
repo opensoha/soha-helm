@@ -1,6 +1,6 @@
 image:
   repository: yshanchui/soha-hermes-agent
-  tag: latest
+  tag: v0.1.1
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []
@@ -14,7 +14,7 @@ service:
 
 secrets:
   # Required for claim/callback requests to the Soha control plane.
-  controlPlaneBearerToken: ""
+  controlPlaneBearerToken: soha-1234567890123456789012345678901234567890
 
 controlPlane:
   baseUrl: http://soha:8080

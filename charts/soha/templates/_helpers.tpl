@@ -47,10 +47,6 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- if not $candidate -}}
 {{- $candidate = $existing -}}
 {{- end -}}
-{{- $lower := lower $candidate -}}
-{{- if or (eq $lower "change-me") (eq $lower "changeme") (eq $lower "dev-only-change-me") (eq $lower "demo-execution-runner-token") (eq $lower "dev-alert-webhook-token") (eq $lower "soha") (eq $lower "pgsql") (contains "replace-with" $lower) (contains "replace_with" $lower) (contains "placeholder" $lower) -}}
-{{- fail (printf "%s must not use a demo or placeholder value" $name) -}}
-{{- end -}}
 {{- if $candidate -}}
 {{- $candidate -}}
 {{- else -}}

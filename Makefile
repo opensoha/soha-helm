@@ -22,9 +22,9 @@ verify: lint repo ## Lint charts, package them, and verify the local repository.
 	done; \
 	helm repo add opensoha http://127.0.0.1:8879 >/dev/null; \
 	helm repo update >/dev/null; \
-	helm pull opensoha/soha --version 0.1.0 --destination "$$tmp/pull" >/dev/null; \
-	helm pull opensoha/soha-agent --version 0.1.0 --destination "$$tmp/pull" >/dev/null; \
-	helm pull opensoha/soha-hermes-agent --version 0.1.0 --destination "$$tmp/pull" >/dev/null
+	helm pull opensoha/soha --version 0.1.1 --destination "$$tmp/pull" >/dev/null; \
+	helm pull opensoha/soha-agent --version 0.1.1 --destination "$$tmp/pull" >/dev/null; \
+	helm pull opensoha/soha-hermes-agent --version 0.1.1 --destination "$$tmp/pull" >/dev/null
 
 lint: ## Lint and render all charts.
 	helm lint charts/soha

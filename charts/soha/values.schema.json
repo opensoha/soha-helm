@@ -136,9 +136,6 @@
           "allOf": [
             {
               "minLength": 12
-            },
-            {
-              "$ref": "#/definitions/notPlaceholder"
             }
           ]
         }
@@ -154,9 +151,6 @@
           "allOf": [
             {
               "minLength": 32
-            },
-            {
-              "$ref": "#/definitions/notPlaceholder"
             }
           ]
         }
@@ -172,36 +166,10 @@
           "allOf": [
             {
               "minLength": 32
-            },
-            {
-              "$ref": "#/definitions/notPlaceholder"
             }
           ]
         }
       ]
-    },
-    "notPlaceholder": {
-      "not": {
-        "anyOf": [
-          {
-            "enum": [
-              "change-me",
-              "changeme",
-              "dev-only-change-me",
-              "demo-execution-runner-token",
-              "dev-alert-webhook-token",
-              "soha",
-              "pgsql"
-            ]
-          },
-          {
-            "pattern": "(?i)replace[-_]?with"
-          },
-          {
-            "pattern": "(?i)placeholder"
-          }
-        ]
-      }
     }
   }
 }

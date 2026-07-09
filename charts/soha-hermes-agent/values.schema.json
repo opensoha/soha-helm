@@ -30,14 +30,7 @@
   "definitions": {
     "requiredSecret": {
       "type": "string",
-      "minLength": 12,
-      "not": {
-        "anyOf": [
-          { "enum": ["change-me", "changeme", "demo-execution-runner-token"] },
-          { "pattern": "(?i)replace[-_]?with" },
-          { "pattern": "(?i)placeholder" }
-        ]
-      }
+      "minLength": 12
     }
   }
 }

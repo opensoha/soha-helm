@@ -3,6 +3,8 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: {{ include "soha.postgresServiceName" . }}-data
+  annotations:
+    helm.sh/resource-policy: keep
   labels:
     {{- include "soha.labels" . | nindent 4 }}
 spec:

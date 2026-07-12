@@ -37,18 +37,22 @@
           "maximum": 65535
         },
         "password": {
-          "$ref": "#/definitions/generatedSecret"
+          "$ref": "#/definitions/initialCredential"
         }
       }
     },
     "config": {
       "type": "object",
       "properties": {
+        "maxHeaderBytes": {
+          "type": "integer",
+          "minimum": 1024
+        },
         "runtime": {
           "type": "object",
           "properties": {
             "executionRunnerToken": {
-              "$ref": "#/definitions/generatedLongSecret"
+              "$ref": "#/definitions/systemSecret"
             }
           }
         },
@@ -56,10 +60,10 @@
           "type": "object",
           "properties": {
             "adminPassword": {
-              "$ref": "#/definitions/generatedSecret"
+              "$ref": "#/definitions/initialCredential"
             },
             "jwtSecret": {
-              "$ref": "#/definitions/generatedLongSecret"
+              "$ref": "#/definitions/systemSecret"
             }
           }
         },
@@ -67,7 +71,7 @@
           "type": "object",
           "properties": {
             "webhookToken": {
-              "$ref": "#/definitions/generatedLongSecret"
+              "$ref": "#/definitions/systemSecret"
             }
           }
         },
@@ -88,7 +92,7 @@
           "type": "object",
           "properties": {
             "credentialEncryptionKey": {
-              "$ref": "#/definitions/optionalCredentialKey"
+              "$ref": "#/definitions/systemSecret"
             }
           }
         }
@@ -126,50 +130,13 @@
     }
   ],
   "definitions": {
-    "generatedSecret": {
+    "initialCredential": {
       "type": "string",
-      "oneOf": [
-        {
-          "const": ""
-        },
-        {
-          "allOf": [
-            {
-              "minLength": 12
-            }
-          ]
-        }
-      ]
+      "minLength": 1
     },
-    "generatedLongSecret": {
+    "systemSecret": {
       "type": "string",
-      "oneOf": [
-        {
-          "const": ""
-        },
-        {
-          "allOf": [
-            {
-              "minLength": 32
-            }
-          ]
-        }
-      ]
-    },
-    "optionalCredentialKey": {
-      "type": "string",
-      "oneOf": [
-        {
-          "const": ""
-        },
-        {
-          "allOf": [
-            {
-              "minLength": 32
-            }
-          ]
-        }
-      ]
+      "minLength": 32
     }
   }
 }

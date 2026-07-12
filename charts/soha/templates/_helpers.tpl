@@ -39,26 +39,15 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- printf "%s:%s" .Values.image.repository $tag -}}
 {{- end -}}
 
-{{- define "soha.secretValue" -}}
+{{- define "soha.persistedCredentialValue" -}}
 {{- $name := .name -}}
 {{- $value := trim (default "" .value) -}}
 {{- $existing := trim (default "" .existing) -}}
-{{- $candidate := $value -}}
-{{- if not $candidate -}}
-{{- $candidate = $existing -}}
-{{- end -}}
-{{- if $candidate -}}
-{{- $candidate -}}
+{{- if $existing -}}
+{{- $existing -}}
+{{- else if $value -}}
+{{- $value -}}
 {{- else -}}
-{{- randAlphaNum (default 48 .length) -}}
-{{- end -}}
-{{- end -}}
-
-{{- define "soha.requiredSecretValue" -}}
-{{- $name := .name -}}
-{{- $value := include "soha.secretValue" . -}}
-{{- if not (trim $value) -}}
 {{- fail (printf "%s is required" $name) -}}
 {{- end -}}
-{{- $value -}}
 {{- end -}}

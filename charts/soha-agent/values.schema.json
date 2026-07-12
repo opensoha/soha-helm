@@ -14,8 +14,15 @@
     "secrets": {
       "type": "object",
       "properties": {
-        "agentBearerToken": { "$ref": "#/definitions/requiredSecret" },
-        "controlPlaneBearerToken": { "$ref": "#/definitions/requiredSecret" }
+        "agentBearerToken": { "$ref": "#/definitions/generatedSecret" },
+        "controlPlaneBearerToken": { "$ref": "#/definitions/generatedSecret" },
+        "controlPlaneExistingSecret": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "key": { "type": "string" }
+          }
+        }
       }
     },
     "config": {
@@ -33,9 +40,12 @@
     }
   },
   "definitions": {
-    "requiredSecret": {
+    "generatedSecret": {
       "type": "string",
-      "minLength": 12
+      "oneOf": [
+        { "const": "" },
+        { "minLength": 32 }
+      ]
     }
   }
 }

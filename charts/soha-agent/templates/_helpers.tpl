@@ -39,3 +39,15 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- define "soha-agent.clusterRoleName" -}}
 {{- default (include "soha-agent.fullname" .) .Values.rbac.clusterRoleName -}}
 {{- end -}}
+
+{{- define "soha-agent.secretValue" -}}
+{{- $value := trim (default "" .value) -}}
+{{- $existing := trim (default "" .existing) -}}
+{{- if $value -}}
+{{- $value -}}
+{{- else if $existing -}}
+{{- $existing -}}
+{{- else -}}
+{{- randAlphaNum (default 64 .length) -}}
+{{- end -}}
+{{- end -}}

@@ -1,6 +1,6 @@
 image:
   repository: yshanchui/soha-agent
-  tag: v0.1.1
+  tag: v0.1.2
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []
@@ -21,10 +21,14 @@ serviceAccount:
   name: ""
 
 secrets:
-  # Required for endpoints served by the agent.
-  agentBearerToken: soha-1234567890123456789012345678901234567890
-  # Required for claim/callback requests to the Soha control plane.
-  controlPlaneBearerToken: soha-1234567890123456789012345678901234567890
+  # Generated on first install when empty, then reused from the live Secret.
+  agentBearerToken: ""
+  # Set this only when the control-plane token is managed outside Kubernetes.
+  controlPlaneBearerToken: ""
+  # By default consume only the runner token projected by the soha Chart.
+  controlPlaneExistingSecret:
+    name: soha-config
+    key: execution-runner-token
 
 config:
   appEnv: production

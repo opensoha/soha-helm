@@ -27,6 +27,7 @@ data:
       format: {{ .Values.config.loggerFormat | quote }}
     auth:
       bearer_token: ""
+      bearer_token_file: ""
     security:
       allowed_actions:
 {{- range .Values.config.security.allowedActions }}
@@ -38,6 +39,7 @@ data:
       enabled: {{ .Values.config.controlPlane.enabled }}
       base_url: {{ .Values.config.controlPlane.baseUrl | quote }}
       bearer_token: ""
+      bearer_token_file: ""
       agent_id: {{ .Values.config.controlPlane.agentId | quote }}
       runtime_endpoint: {{ .Values.config.controlPlane.runtimeEndpoint | quote }}
       poll_interval: {{ .Values.config.controlPlane.pollInterval | quote }}

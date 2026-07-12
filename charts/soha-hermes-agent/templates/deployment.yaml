@@ -33,13 +33,32 @@ spec:
             - name: http
               containerPort: 18080
           env:
+            - name: SOHA_AGENT_APP_ENV
+              value: production
+            - name: SOHA_AGENT_HTTP_ADDR
+              value: :18080
+            - name: SOHA_AGENT_AUTH_BEARER_TOKEN
+              valueFrom:
+                secretKeyRef:
+{{- if .Values.secrets.controlPlaneBearerToken }}
+                  name: {{ include "soha-hermes-agent.fullname" . }}-secrets
+                  key: control-plane-bearer-token
+{{- else }}
+                  name: {{ required "secrets.controlPlaneExistingSecret.name is required when controlPlaneBearerToken is empty" .Values.secrets.controlPlaneExistingSecret.name }}
+                  key: {{ required "secrets.controlPlaneExistingSecret.key is required when controlPlaneBearerToken is empty" .Values.secrets.controlPlaneExistingSecret.key }}
+{{- end }}
             - name: SOHA_AGENT_CONTROL_PLANE_BASE_URL
               value: {{ .Values.controlPlane.baseUrl | quote }}
             - name: SOHA_AGENT_CONTROL_PLANE_BEARER_TOKEN
               valueFrom:
                 secretKeyRef:
+{{- if .Values.secrets.controlPlaneBearerToken }}
                   name: {{ include "soha-hermes-agent.fullname" . }}-secrets
                   key: control-plane-bearer-token
+{{- else }}
+                  name: {{ required "secrets.controlPlaneExistingSecret.name is required when controlPlaneBearerToken is empty" .Values.secrets.controlPlaneExistingSecret.name }}
+                  key: {{ required "secrets.controlPlaneExistingSecret.key is required when controlPlaneBearerToken is empty" .Values.secrets.controlPlaneExistingSecret.key }}
+{{- end }}
             - name: SOHA_AGENT_CONTROL_PLANE_AGENT_ID
               value: {{ .Values.controlPlane.agentId | quote }}
             - name: SOHA_AGENT_CONTROL_PLANE_PROVIDER_KINDS

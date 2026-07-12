@@ -37,8 +37,13 @@ spec:
             - name: SOHA_AGENT_CONTROL_PLANE_BEARER_TOKEN
               valueFrom:
                 secretKeyRef:
+{{- if .Values.secrets.controlPlaneBearerToken }}
                   name: {{ include "soha-agent.fullname" . }}-secrets
                   key: control-plane-bearer-token
+{{- else }}
+                  name: {{ required "secrets.controlPlaneExistingSecret.name is required when controlPlaneBearerToken is empty" .Values.secrets.controlPlaneExistingSecret.name }}
+                  key: {{ required "secrets.controlPlaneExistingSecret.key is required when controlPlaneBearerToken is empty" .Values.secrets.controlPlaneExistingSecret.key }}
+{{- end }}
             - name: SOHA_AGENT_AUTH_BEARER_TOKEN
               valueFrom:
                 secretKeyRef:

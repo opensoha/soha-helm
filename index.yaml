@@ -4,6 +4,39 @@ entries:
   - annotations:
       artifacthub.io/category: integration-delivery
       artifacthub.io/changes: |
+        - kind: changed
+          description: Bundle PostgreSQL 18.4 with pgvector 0.8.5, pg_trgm, pg_stat_statements, and database health probes.
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: source
+          url: https://github.com/opensoha/soha
+        - name: docs
+          url: https://docs.opensoha.dev/
+    apiVersion: v2
+    appVersion: 0.1.3
+    created: "2026-07-15T06:31:31.011666407Z"
+    description: OpenSoha control plane with embedded web console and optional PostgreSQL.
+    digest: 7f1109f3652aea218a3f8a6ca6e26cab7f1d305453b28a2cf051c9cadc59419d
+    home: https://github.com/opensoha/soha
+    keywords:
+    - opensoha
+    - soha
+    - ai-gateway
+    - delivery
+    - kubernetes
+    maintainers:
+    - name: OpenSoha
+      url: https://github.com/opensoha
+    name: soha
+    sources:
+    - https://github.com/opensoha/soha
+    type: application
+    urls:
+    - https://github.com/opensoha/soha-helm/releases/download/soha-0.1.3/soha-0.1.3.tgz
+    version: 0.1.3
+  - annotations:
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/changes: |
         - kind: added
           description: Initial public Helm chart.
       artifacthub.io/license: Apache-2.0
@@ -177,4 +210,4 @@ entries:
     urls:
     - https://github.com/opensoha/soha-helm/releases/download/soha-hermes-agent-0.1.0/soha-hermes-agent-0.1.0.tgz
     version: 0.1.0
-generated: "2026-07-09T02:15:18.992356427Z"
+generated: "2026-07-15T06:31:31.011685963Z"

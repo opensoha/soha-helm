@@ -39,7 +39,7 @@ helm install soha-hermes-agent opensoha/soha-hermes-agent \
 
 ## Published Charts
 
-- `soha`: OpenSoha control plane with embedded web console and optional PostgreSQL.
+- `soha`: OpenSoha control plane with embedded web console and optional PostgreSQL 18.4 + pgvector 0.8.5.
 - `soha-agent`: OpenSoha cluster agent for remote Kubernetes operations.
 - `soha-hermes-agent`: OpenSoha Hermes Agent Runtime runner.
 
@@ -48,6 +48,13 @@ The `soha-cli` artifact is published as a Docker tool image at `yshanchui/soha-c
 ```Dockerfile
 COPY --from=yshanchui/soha-cli:v0.1.0 /usr/local/bin/soha /usr/local/bin/soha
 ```
+
+The bundled database uses `pgvector/pgvector:0.8.5-pg18-trixie`, enables
+`vector` and `pg_trgm`, and preloads `pg_stat_statements`. When
+`postgres.enabled=false`, the external PostgreSQL 18 server must provide
+`vector` and `pg_trgm` unless the Soha migration user can create extensions.
+`pg_stat_statements` is optional for external databases and must be configured
+and restarted by their administrator.
 
 ## Publishing
 

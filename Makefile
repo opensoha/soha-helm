@@ -3,8 +3,8 @@
 CHARTS := charts/soha charts/soha-agent charts/soha-hermes-agent
 PACKAGE_DIR ?= .cr-release-packages
 REPO_DIR ?= .cr-index
-HELM_LINT_AGENT_TOKEN ?= test-agent-token-123456
-HELM_LINT_RUNNER_TOKEN ?= test-runner-token-123456
+HELM_LINT_AGENT_TOKEN ?= test-agent-token-123456789012345
+HELM_LINT_RUNNER_TOKEN ?= test-runner-token-12345678901234
 
 .PHONY: verify lint package repo clean
 
@@ -22,9 +22,9 @@ verify: lint repo ## Lint charts, package them, and verify the local repository.
 	done; \
 	helm repo add opensoha http://127.0.0.1:8879 >/dev/null; \
 	helm repo update >/dev/null; \
-	helm pull opensoha/soha --version 0.1.1 --destination "$$tmp/pull" >/dev/null; \
-	helm pull opensoha/soha-agent --version 0.1.1 --destination "$$tmp/pull" >/dev/null; \
-	helm pull opensoha/soha-hermes-agent --version 0.1.1 --destination "$$tmp/pull" >/dev/null
+	helm pull opensoha/soha --destination "$$tmp/pull" >/dev/null; \
+	helm pull opensoha/soha-agent --destination "$$tmp/pull" >/dev/null; \
+	helm pull opensoha/soha-hermes-agent --destination "$$tmp/pull" >/dev/null
 
 lint: ## Lint and render all charts.
 	helm lint charts/soha

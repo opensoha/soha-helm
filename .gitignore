@@ -1,3 +1,4 @@
 .cr-index/
 .cr-release-packages/
+graphify-out/
 *.tgz

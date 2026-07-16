@@ -2,7 +2,7 @@ apiVersion: v2
 name: soha
 description: OpenSoha control plane with embedded web console and optional PostgreSQL.
 type: application
-version: 0.1.3
+version: 0.1.4
 appVersion: "0.1.3"
 home: https://github.com/opensoha/soha
 sources:
@@ -25,5 +25,7 @@ annotations:
     - name: docs
       url: https://docs.opensoha.dev/
   artifacthub.io/changes: |
+    - kind: changed
+      description: Document the canonical OpenSoha Helm repository installation path.
     - kind: changed
       description: Bundle PostgreSQL 18.4 with pgvector 0.8.5, pg_trgm, pg_stat_statements, and database health probes.

@@ -19,6 +19,7 @@ on:
 
 permissions:
   contents: write
+  packages: write
 
 jobs:
   verify:
@@ -74,3 +75,26 @@ jobs:
           mark_as_latest: false
         env:
           CR_TOKEN: ${{ github.token }}
+      - name: Login to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish Helm charts as OCI artifacts
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          for package in .cr-release-packages/*.tgz; do
+            name="$(helm show chart "${package}" | awk '$1 == "name:" { print $2 }')"
+            version="$(helm show chart "${package}" | awk '$1 == "version:" { print $2 }')"
+            reference="oci://ghcr.io/${GITHUB_REPOSITORY_OWNER}/charts/${name}"
+            if helm show chart "${reference}" --version "${version}" >/dev/null 2>&1; then
+              echo "${name} ${version} already exists in GHCR"
+              continue
+            fi
+            helm push "${package}" "oci://ghcr.io/${GITHUB_REPOSITORY_OWNER}/charts"
+          done

@@ -4,6 +4,8 @@ This repository owns and publishes the OpenSoha Helm charts.
 
 ## Usage
 
+### Helm Repository
+
 ```bash
 helm repo add opensoha https://raw.githubusercontent.com/opensoha/soha-helm/gh-pages
 helm repo update
@@ -43,7 +45,7 @@ helm install soha-hermes-agent opensoha/soha-hermes-agent \
 - `soha-agent`: OpenSoha cluster agent for remote Kubernetes operations.
 - `soha-hermes-agent`: OpenSoha Hermes Agent Runtime runner.
 
-The `soha-cli` artifact is published as a Docker tool image at `yshanchui/soha-cli`. It is not a Helm workload. Use it from multi-stage builds when a container needs the `soha` CLI:
+The `soha-cli` artifact is available as a Docker Hub tool image at `yshanchui/soha-cli`. It is not a Helm workload. Use it from multi-stage builds when a container needs the `soha` CLI:
 
 ```Dockerfile
 COPY --from=yshanchui/soha-cli:v0.1.0 /usr/local/bin/soha /usr/local/bin/soha
@@ -64,7 +66,12 @@ Chart sources live under `charts/`. On every push to `main` that changes chart s
 make verify
 ```
 
-If a chart version changed, the workflow uploads chart archives to GitHub Releases and updates `index.yaml` on the `gh-pages` branch. Artifact Hub indexes `https://raw.githubusercontent.com/opensoha/soha-helm/gh-pages`; it does not host the chart archives.
+If a chart version changed, the workflow publishes it through both supported channels:
+
+- GitHub Releases plus `index.yaml` on the `gh-pages` branch for `https://raw.githubusercontent.com/opensoha/soha-helm/gh-pages`.
+- GHCR OCI artifacts below `oci://ghcr.io/opensoha/charts`; publish them as public packages before documenting them as an installation channel.
+
+GitHub Pages can be enabled later, but the raw `gh-pages` URL remains the canonical repository endpoint until Pages is verified.
 
 ## Artifact Hub
 

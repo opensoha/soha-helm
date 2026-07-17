@@ -7,7 +7,7 @@ This repository owns and publishes the OpenSoha Helm charts.
 ### Helm Repository
 
 ```bash
-helm repo add opensoha https://opensoha.github.io/soha-helm/
+helm repo add opensoha https://opensoha.github.io/soha-helm
 helm repo update
 helm search repo opensoha
 ```
@@ -68,7 +68,7 @@ make verify
 
 If a chart version changed, the workflow publishes it through both supported channels:
 
-- GitHub Releases plus `index.yaml` on the `gh-pages` branch, published through GitHub Pages at `https://opensoha.github.io/soha-helm/`.
+- GitHub Releases plus `index.yaml` on the `gh-pages` branch, published through GitHub Pages at `https://opensoha.github.io/soha-helm`.
 - GHCR OCI artifacts below `oci://ghcr.io/opensoha/charts`; publish them as public packages before documenting them as an installation channel.
 
 The workflow deploys the `gh-pages` branch as a GitHub Pages site after each successful chart release. Enable GitHub Pages for this repository once in **Settings -> Pages** (source: GitHub Actions); subsequent releases appear under the workflow's `github-pages` environment with the site URL.
@@ -81,6 +81,6 @@ Add a Helm repository in Artifact Hub with:
 
 - Kind: `Helm charts`
 - Name: `opensoha`
-- URL: `https://opensoha.github.io/soha-helm/`
+- URL: `https://opensoha.github.io/soha-helm`
 
 Ownership metadata lives in `artifacthub-repo.yml`. Keep the owner email current so Artifact Hub can verify the repository claim.

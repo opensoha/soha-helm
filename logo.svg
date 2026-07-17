@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Soha</title>
+  <desc id="desc">Soha logo</desc>
+  <rect width="64" height="64" rx="14" fill="#111827" />
+  <path d="M19 23.5c0-4.7 3.8-8.5 8.5-8.5h17.8l-6 8.5H27.6a2.5 2.5 0 0 0 0 5h8.8a10.5 10.5 0 0 1 0 21H18.7l6-8.5h11.7a2 2 0 1 0 0-4h-8.8C22.8 37 19 33.2 19 28.5z" fill="#f8fafc" />
+  <path d="M43 14h10L39.7 33H29.5z" fill="#60a5fa" />
+</svg>

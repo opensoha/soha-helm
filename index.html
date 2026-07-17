@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Official Helm charts for OpenSoha." />
+    <title>OpenSoha Helm Charts</title>
+    <link rel="icon" href="./logo.svg" type="image/svg+xml" />
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #111827;
+        --muted: #5f6b7a;
+        --line: #dfe4ea;
+        --surface: #f7f9fc;
+        --blue: #1677ff;
+        --cyan: #0891b2;
+        --green: #16803c;
+        --white: #ffffff;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--white);
+        color: var(--ink);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 16px;
+        line-height: 1.6;
+      }
+
+      a {
+        color: var(--blue);
+        text-decoration-thickness: 1px;
+        text-underline-offset: 3px;
+      }
+
+      a:hover {
+        color: #0958d9;
+      }
+
+      a:focus-visible,
+      button:focus-visible {
+        outline: 3px solid #91caff;
+        outline-offset: 3px;
+      }
+
+      .shell {
+        width: min(1040px, calc(100% - 40px));
+        margin: 0 auto;
+      }
+
+      header {
+        border-bottom: 1px solid var(--line);
+      }
+
+      nav {
+        min-height: 72px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        color: var(--ink);
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      .brand img {
+        width: 36px;
+        height: 36px;
+      }
+
+      .nav-links {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      main {
+        padding: 76px 0 72px;
+      }
+
+      .eyebrow {
+        margin: 0 0 12px;
+        color: var(--cyan);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 13px;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        max-width: 760px;
+        margin: 0;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 56px;
+        font-weight: 700;
+        line-height: 1.08;
+      }
+
+      .lede {
+        max-width: 680px;
+        margin: 22px 0 0;
+        color: var(--muted);
+        font-size: 19px;
+      }
+
+      .install {
+        margin-top: 38px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        overflow: hidden;
+        border: 1px solid #263449;
+        border-radius: 8px;
+        background: #0b1220;
+      }
+
+      .install code {
+        min-width: 0;
+        padding: 18px 20px;
+        overflow-x: auto;
+        color: #e5edf5;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 14px;
+        white-space: nowrap;
+      }
+
+      .install button {
+        min-width: 88px;
+        border: 0;
+        border-left: 1px solid #263449;
+        background: #162033;
+        color: var(--white);
+        cursor: pointer;
+        font: inherit;
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .install button:hover {
+        background: #22304a;
+      }
+
+      .status {
+        margin: 18px 0 0;
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        color: var(--green);
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .status::before {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--green);
+        content: "";
+      }
+
+      .charts {
+        margin-top: 76px;
+        border-top: 1px solid var(--line);
+      }
+
+      .chart-row {
+        display: grid;
+        grid-template-columns: minmax(180px, 0.6fr) minmax(0, 1.4fr);
+        gap: 36px;
+        padding: 24px 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .chart-row h2 {
+        margin: 0;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 16px;
+      }
+
+      .chart-row p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      footer {
+        border-top: 1px solid var(--line);
+        background: var(--surface);
+      }
+
+      footer .shell {
+        min-height: 88px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      @media (max-width: 640px) {
+        .shell {
+          width: min(100% - 28px, 1040px);
+        }
+
+        .nav-links a:not(:last-child) {
+          display: none;
+        }
+
+        main {
+          padding: 52px 0 56px;
+        }
+
+        h1 {
+          font-size: 40px;
+        }
+
+        .lede {
+          font-size: 17px;
+        }
+
+        .install {
+          grid-template-columns: minmax(0, 1fr);
+        }
+
+        .install code {
+          overflow-wrap: anywhere;
+          white-space: normal;
+        }
+
+        .install button {
+          min-height: 44px;
+          border-top: 1px solid #263449;
+          border-left: 0;
+        }
+
+        .charts {
+          margin-top: 56px;
+        }
+
+        .chart-row {
+          grid-template-columns: 1fr;
+          gap: 8px;
+        }
+
+        footer .shell {
+          padding: 20px 0;
+          align-items: flex-start;
+          flex-direction: column;
+          justify-content: center;
+          gap: 4px;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <nav class="shell" aria-label="Primary navigation">
+        <a class="brand" href="./">
+          <img src="./logo.svg" alt="" />
+          <span>OpenSoha</span>
+        </a>
+        <div class="nav-links">
+          <a href="./index.yaml">Repository index</a>
+          <a href="https://docs.opensoha.dev/">Documentation</a>
+          <a href="https://github.com/opensoha/soha-helm">GitHub</a>
+        </div>
+      </nav>
+    </header>
+
+    <main class="shell">
+      <section aria-labelledby="page-title">
+        <p class="eyebrow">Official package repository</p>
+        <h1 id="page-title">OpenSoha Helm Charts</h1>
+        <p class="lede">Install the Soha control plane and agent runtimes on Kubernetes from the official OpenSoha chart repository.</p>
+
+        <div class="install" aria-label="Helm repository command">
+          <code id="repo-command">helm repo add opensoha https://opensoha.github.io/soha-helm</code>
+          <button id="copy-command" type="button">Copy</button>
+        </div>
+        <p class="status">Repository index available</p>
+      </section>
+
+      <section class="charts" aria-label="Published charts">
+        <div class="chart-row">
+          <h2>soha</h2>
+          <p>OpenSoha control plane with the embedded web console and optional PostgreSQL.</p>
+        </div>
+        <div class="chart-row">
+          <h2>soha-agent</h2>
+          <p>Cluster agent for remote Kubernetes operations managed by Soha.</p>
+        </div>
+        <div class="chart-row">
+          <h2>soha-hermes-agent</h2>
+          <p>Hermes Agent Runtime runner for workloads coordinated through Soha.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="shell">
+        <span>OpenSoha community project</span>
+        <a href="https://github.com/opensoha/soha-helm/releases">Chart releases</a>
+      </div>
+    </footer>
+
+    <script>
+      const copyButton = document.getElementById("copy-command");
+      const command = document.getElementById("repo-command").textContent;
+
+      copyButton.addEventListener("click", async () => {
+        await navigator.clipboard.writeText(command);
+        copyButton.textContent = "Copied";
+        window.setTimeout(() => {
+          copyButton.textContent = "Copy";
+        }, 1600);
+      });
+    </script>
+  </body>
+</html>

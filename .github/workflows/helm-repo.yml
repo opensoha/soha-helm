@@ -6,6 +6,8 @@ on:
       - ".github/workflows/helm-repo.yml"
       - "Makefile"
       - "artifacthub-repo.yml"
+      - "index.html"
+      - "logo.svg"
       - "charts/**"
   push:
     branches:
@@ -14,6 +16,8 @@ on:
       - ".github/workflows/helm-repo.yml"
       - "Makefile"
       - "artifacthub-repo.yml"
+      - "index.html"
+      - "logo.svg"
       - "charts/**"
   workflow_dispatch:
 
@@ -63,9 +67,11 @@ jobs:
             git rm -rf . >/dev/null 2>&1 || true
           fi
           cp "$GITHUB_WORKSPACE"/artifacthub-repo.yml .
+          cp "$GITHUB_WORKSPACE"/index.html .
+          cp "$GITHUB_WORKSPACE"/logo.svg .
           cp "$GITHUB_WORKSPACE"/README.md .
           touch .nojekyll
-          git add .nojekyll README.md artifacthub-repo.yml
+          git add .nojekyll README.md artifacthub-repo.yml index.html logo.svg
           if git diff --cached --quiet; then
             exit 0
           fi

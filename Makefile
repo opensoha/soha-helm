@@ -17,7 +17,8 @@ verify: lint repo ## Lint charts, package them, and verify the local repository.
 	server_pid="$$!"; \
 	trap 'kill "$$server_pid"; rm -rf "$$tmp"' EXIT; \
 	for _ in 1 2 3 4 5; do \
-		curl -fsS http://127.0.0.1:8879/index.yaml >/dev/null && break; \
+		curl -fsS http://127.0.0.1:8879/ >/dev/null && \
+			curl -fsS http://127.0.0.1:8879/index.yaml >/dev/null && break; \
 		sleep 1; \
 	done; \
 	helm repo add opensoha http://127.0.0.1:8879 >/dev/null; \
@@ -55,6 +56,8 @@ repo: package ## Rebuild index.yaml for Artifact Hub and Helm clients.
 	cp "$(PACKAGE_DIR)"/*.tgz "$(REPO_DIR)"/
 	helm repo index "$(REPO_DIR)"
 	cp artifacthub-repo.yml "$(REPO_DIR)"/
+	cp index.html "$(REPO_DIR)"/
+	cp logo.svg "$(REPO_DIR)"/
 	cp README.md "$(REPO_DIR)"/
 	touch "$(REPO_DIR)/.nojekyll"
 

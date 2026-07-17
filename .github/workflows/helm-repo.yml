@@ -20,10 +20,15 @@ on:
 permissions:
   contents: write
   packages: write
+  pages: write
+  id-token: write
 
 jobs:
   verify:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -98,3 +103,23 @@ jobs:
             fi
             helm push "${package}" "oci://ghcr.io/${GITHUB_REPOSITORY_OWNER}/charts"
           done
+      - name: Configure GitHub Pages
+        if: github.event_name != 'pull_request'
+        uses: actions/configure-pages@v5
+      - name: Checkout published chart repository
+        if: github.event_name != 'pull_request'
+        uses: actions/checkout@v7
+        with:
+          ref: gh-pages
+          path: .pages
+      - name: Upload GitHub Pages artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .pages
+      - name: Deploy GitHub Pages
+        if: github.event_name != 'pull_request'
+        id: deployment
+        uses: actions/deploy-pages@v4
+        env:
+          GITHUB_TOKEN: ${{ github.token }}

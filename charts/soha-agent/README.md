@@ -4,12 +4,12 @@
 
 The chart is distributed through the OpenSoha Helm repository.
 
-- Helm Repository: `https://raw.githubusercontent.com/opensoha/soha-helm/gh-pages` with chart `soha-agent`
+- Helm Repository: `https://opensoha.github.io/soha-helm/` with chart `soha-agent`
 
 Install from the Helm repository:
 
 ```bash
-helm repo add opensoha https://raw.githubusercontent.com/opensoha/soha-helm/gh-pages
+helm repo add opensoha https://opensoha.github.io/soha-helm/
 helm repo update
 helm install soha-agent opensoha/soha-agent \
   --namespace soha-agent \

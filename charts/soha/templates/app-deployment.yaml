@@ -12,6 +12,8 @@ spec:
       {{- include "soha.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+      annotations:
+        checksum/config: {{ include "soha.appConfigChecksum" . | quote }}
       labels:
         app.kubernetes.io/component: app
         {{- include "soha.selectorLabels" . | nindent 8 }}

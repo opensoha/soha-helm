@@ -6,9 +6,9 @@ REPO_DIR ?= .cr-index
 HELM_LINT_AGENT_TOKEN ?= test-agent-token-123456789012345
 HELM_LINT_RUNNER_TOKEN ?= test-runner-token-12345678901234
 
-.PHONY: verify lint package repo clean
+.PHONY: verify lint render-test package repo clean
 
-verify: lint repo ## Lint charts, package them, and verify the local repository.
+verify: lint render-test repo ## Lint charts, test rendering, package them, and verify the local repository.
 	@tmp="$$(mktemp -d)"; \
 	export HELM_REPOSITORY_CONFIG="$$tmp/repositories.yaml"; \
 	export HELM_REPOSITORY_CACHE="$$tmp/cache"; \
@@ -42,6 +42,9 @@ lint: ## Lint and render all charts.
 	helm template soha-hermes-agent charts/soha-hermes-agent \
 		--set-string secrets.controlPlaneBearerToken="$(HELM_LINT_RUNNER_TOKEN)" \
 		>/tmp/soha-hermes-agent-chart.yaml
+
+render-test: ## Assert control-plane configuration rollout rendering behavior.
+	./scripts/test-render.sh
 
 package: ## Package charts into $(PACKAGE_DIR).
 	rm -rf "$(PACKAGE_DIR)"

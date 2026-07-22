@@ -73,7 +73,11 @@
         },
         "monitoring": {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
             "webhookToken": {
               "$ref": "#/definitions/systemSecret"
             }
@@ -82,13 +86,42 @@
         "modules": {
           "type": "object",
           "properties": {
-            "virtualization": {
+            "delivery": {
+              "$ref": "#/definitions/moduleToggle"
+            },
+            "monitoring": {
+              "$ref": "#/definitions/moduleToggle"
+            },
+            "ai": {
               "type": "object",
               "properties": {
                 "enabled": {
                   "type": "boolean"
+                },
+                "features": {
+                  "type": "object",
+                  "properties": {
+                    "globalAssistant": {
+                      "type": "boolean"
+                    }
+                  }
                 }
               }
+            },
+            "aiGateway": {
+              "$ref": "#/definitions/moduleToggle"
+            },
+            "virtualization": {
+              "$ref": "#/definitions/moduleToggle"
+            },
+            "docker": {
+              "$ref": "#/definitions/moduleToggle"
+            },
+            "security": {
+              "$ref": "#/definitions/moduleToggle"
+            },
+            "cmdb": {
+              "$ref": "#/definitions/moduleToggle"
             }
           }
         },
@@ -134,6 +167,14 @@
     }
   ],
   "definitions": {
+    "moduleToggle": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      }
+    },
     "initialCredential": {
       "type": "string",
       "minLength": 1

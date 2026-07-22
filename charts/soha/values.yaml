@@ -34,6 +34,8 @@ postgres:
   storageSize: 10Gi
 
 config:
+  # These values are rendered into the control-plane config.yaml. Changing the
+  # rendered file with helm upgrade rolls the control-plane Pods.
   loggerLevel: info
   loggerFormat: json
   basePath: /api/v1
@@ -45,6 +47,7 @@ config:
   corsAllowedOrigins:
     - https://soha.example.com
   runtime:
+    # Change worker sizing with helm upgrade; the config checksum rolls the Pods.
     workflowWorkers: 4
     workflowQueueSize: 64
     workflowNodeParallelism: 4
@@ -69,37 +72,20 @@ config:
     jwtSecret: soha-123456789012345678901234567890
     accessTTL: 15m
     refreshTTL: 168h
-    oidc:
-      enabled: false
-      providerName: ""
-      issuer: ""
-      clientId: ""
-      clientSecret: ""
-      redirectUrl: https://soha.example.com/api/v1/auth/oidc/callback
-      frontendRedirectUrl: https://soha.example.com/login/callback
-      scopes:
-        - openid
-        - profile
-        - email
-      defaultRoles:
-        - readonly
   monitoring:
     enabled: true
     # Public project default. Override before exposing a deployment.
     webhookToken: soha-123456789012345678901234567890
-    prometheusUrl: ""
-    prometheusBearerToken: ""
-    prometheusDefaultRangeMinutes: 60
-    prometheusStepSeconds: 60
-    prometheusClusterLabel: cluster
-    grafanaBaseUrl: ""
   modules:
+    # Module and feature values are startup configuration for the packaged image.
     delivery:
       enabled: true
     monitoring:
       enabled: true
     ai:
       enabled: true
+      features:
+        globalAssistant: true
     aiGateway:
       enabled: true
     virtualization:
@@ -127,6 +113,7 @@ config:
   security:
     # Public project default. Override before storing production credentials.
     # Changing this key requires migrating data encrypted with the old key.
+    # Keep this value identical across all control-plane replicas.
     credentialEncryptionKey: soha-123456789012345678901234567890
     secretProvider: ""
 

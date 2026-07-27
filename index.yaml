@@ -178,6 +178,38 @@ entries:
   - annotations:
       artifacthub.io/category: integration-delivery
       artifacthub.io/changes: |
+        - kind: added
+          description: Add an Identity Outpost mode with protocol v1 signed configuration and forward-auth readiness.
+        - kind: changed
+          description: Use the canonical ghcr.io/opensoha/soha-agent image.
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: source
+          url: https://github.com/opensoha/soha-agent
+    apiVersion: v2
+    appVersion: 0.1.4
+    created: "2026-07-27T10:00:05.003742413Z"
+    description: OpenSoha cluster agent for remote Kubernetes operations.
+    digest: 0d6481fb6c02a3627d07ad1c867e8835ff643b28b2b4ced91a502f627b0bb6af
+    home: https://github.com/opensoha/soha-agent
+    keywords:
+    - opensoha
+    - soha-agent
+    - kubernetes
+    - delivery
+    maintainers:
+    - name: OpenSoha
+      url: https://github.com/opensoha
+    name: soha-agent
+    sources:
+    - https://github.com/opensoha/soha-agent
+    type: application
+    urls:
+    - https://github.com/opensoha/soha-helm/releases/download/soha-agent-0.2.0/soha-agent-0.2.0.tgz
+    version: 0.2.0
+  - annotations:
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/changes: |
         - kind: changed
           description: Document the canonical Helm repository and required control-plane runner token.
       artifacthub.io/license: Apache-2.0
@@ -344,4 +376,4 @@ entries:
     urls:
     - https://github.com/opensoha/soha-helm/releases/download/soha-hermes-agent-0.1.0/soha-hermes-agent-0.1.0.tgz
     version: 0.1.0
-generated: "2026-07-24T01:11:41.191153829Z"
+generated: "2026-07-27T10:00:05.003772318Z"

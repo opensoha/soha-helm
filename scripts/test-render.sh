@@ -10,6 +10,8 @@ feature_render="$tmp_dir/feature.yaml"
 restart_render="$tmp_dir/restart.yaml"
 replica_render="$tmp_dir/replica.yaml"
 logger_render="$tmp_dir/logger.yaml"
+agent_render="$tmp_dir/agent.yaml"
+outpost_render="$tmp_dir/outpost.yaml"
 
 helm template soha "$root_dir/charts/soha" >"$default_render"
 helm template soha "$root_dir/charts/soha" \
@@ -20,6 +22,14 @@ helm template soha "$root_dir/charts/soha" \
   --set replicaCount=2 >"$replica_render"
 helm template soha "$root_dir/charts/soha" \
   --set-string config.loggerLevel=debug >"$logger_render"
+helm template soha-agent "$root_dir/charts/soha-agent" >"$agent_render"
+helm template soha-outpost "$root_dir/charts/soha-agent" \
+  --set mode=outpost \
+  --set replicaCount=2 \
+  --set-string config.controlPlane.outpost.trustKeyId=test-key \
+  --set-string config.controlPlane.outpost.trustPublicKey=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \
+  --set-string secrets.controlPlaneBearerToken=12345678901234567890123456789012 \
+  --set-string secrets.agentBearerToken=abcdefghijklmnopqrstuvwxyz123456 >"$outpost_render"
 
 checksum() {
   sed -n 's/^[[:space:]]*checksum\/config: "\([0-9a-f][0-9a-f]*\)"$/\1/p' "$1" | head -n 1
@@ -69,6 +79,15 @@ rendered_checksum=$(printf '%s' "$rendered_config" | shasum -a 256 | awk '{print
 
 grep -q 'assistant.global: false' "$feature_render"
 grep -q 'replicas: 2' "$replica_render"
+grep -q 'enabled: true' "$outpost_render"
+grep -q 'protocol_version: "v1"' "$outpost_render"
+grep -q 'path: /readyz' "$outpost_render"
+grep -q 'kind: PodDisruptionBudget' "$outpost_render"
+if grep -q 'kind: ClusterRole' "$outpost_render" || grep -q 'kind: PersistentVolumeClaim' "$outpost_render"; then
+  echo "outpost mode rendered cluster RBAC or persistent state" >&2
+  exit 1
+fi
+grep -q 'kind: ClusterRole' "$agent_render"
 
 if grep 'checksum/config:' "$default_render" | grep -q 'soha-123456'; then
   echo "config checksum annotation leaked credential plaintext" >&2
@@ -79,6 +98,13 @@ if helm template soha "$root_dir/charts/soha" \
   --set-string config.modules.ai.features.globalAssistant=not-a-boolean \
   >"$tmp_dir/invalid-feature.yaml" 2>/dev/null; then
   echo "module feature schema accepted a non-boolean value" >&2
+  exit 1
+fi
+
+if helm template soha-outpost "$root_dir/charts/soha-agent" \
+  --set mode=outpost \
+  >"$tmp_dir/invalid-outpost.yaml" 2>/dev/null; then
+  echo "outpost mode accepted missing trust key configuration" >&2
   exit 1
 fi
 

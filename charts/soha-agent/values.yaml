@@ -1,8 +1,9 @@
 image:
-  repository: yshanchui/soha-agent
-  tag: v0.1.2
+  repository: ghcr.io/opensoha/soha-agent
+  tag: v0.1.4
   pullPolicy: IfNotPresent
 
+mode: agent
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
@@ -62,6 +63,13 @@ config:
       workspaceRoot: /var/lib/soha-agent/runtime
       pollInterval: 5s
       providers: {}
+    outpost:
+      agentId: production-outpost
+      protocolVersion: v1
+      trustKeyId: ""
+      trustPublicKey: ""
+      pollInterval: 5s
+      heartbeatInterval: 15s
   kubernetes:
     enabled: true
     id: production-agent

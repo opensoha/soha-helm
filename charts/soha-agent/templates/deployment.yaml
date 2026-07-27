@@ -11,11 +11,14 @@ spec:
       {{- include "soha-agent.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum | quote }}
       labels:
         {{- include "soha-agent.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/part-of: opensoha
     spec:
       serviceAccountName: {{ include "soha-agent.serviceAccountName" . }}
+      automountServiceAccountToken: {{ ne .Values.mode "outpost" }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -61,7 +64,7 @@ spec:
               subPath: data
           readinessProbe:
             httpGet:
-              path: /api/v1/healthz
+              path: {{ ternary "/readyz" "/api/v1/healthz" (eq .Values.mode "outpost") }}
               port: http
             initialDelaySeconds: 5
             periodSeconds: 10
@@ -78,7 +81,7 @@ spec:
           configMap:
             name: {{ include "soha-agent.fullname" . }}-config
         - name: state
-          {{- if .Values.persistence.enabled }}
+          {{- if and .Values.persistence.enabled (ne .Values.mode "outpost") }}
           persistentVolumeClaim:
             claimName: {{ include "soha-agent.fullname" . }}-state
           {{- else }}

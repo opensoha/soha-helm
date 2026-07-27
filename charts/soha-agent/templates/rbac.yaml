@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "soha-agent.labels" . | nindent 4 }}
 {{- end }}
-{{- if .Values.rbac.create }}
+{{- if and .Values.rbac.create (ne .Values.mode "outpost") }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole

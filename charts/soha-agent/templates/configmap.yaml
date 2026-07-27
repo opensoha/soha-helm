@@ -7,7 +7,7 @@ metadata:
 data:
   agent.config.yaml: |
     app:
-      name: soha-agent
+      name: {{ ternary "soha-outpost" "soha-agent" (eq .Values.mode "outpost") }}
       env: {{ .Values.config.appEnv | quote }}
     http:
       addr: :18080
@@ -30,8 +30,12 @@ data:
       bearer_token_file: ""
     security:
       allowed_actions:
+{{- if eq .Values.mode "outpost" }}
+        []
+{{- else }}
 {{- range .Values.config.security.allowedActions }}
         - {{ . | quote }}
+{{- end }}
 {{- end }}
     audit:
       file_path: /var/log/soha-agent/actions.jsonl
@@ -40,7 +44,7 @@ data:
       base_url: {{ .Values.config.controlPlane.baseUrl | quote }}
       bearer_token: ""
       bearer_token_file: ""
-      agent_id: {{ .Values.config.controlPlane.agentId | quote }}
+      agent_id: {{ ternary .Values.config.controlPlane.outpost.agentId .Values.config.controlPlane.agentId (eq .Values.mode "outpost") | quote }}
       runtime_endpoint: {{ .Values.config.controlPlane.runtimeEndpoint | quote }}
       poll_interval: {{ .Values.config.controlPlane.pollInterval | quote }}
       max_concurrency: {{ .Values.config.controlPlane.maxConcurrency }}
@@ -49,12 +53,16 @@ data:
         max_attempts: 3
         backoff: 500ms
       provider_kinds:
+{{- if eq .Values.mode "outpost" }}
+        []
+{{- else }}
 {{- range .Values.config.controlPlane.providerKinds }}
         - {{ . | quote }}
 {{- end }}
+{{- end }}
       workspace_root: {{ .Values.config.controlPlane.workspaceRoot | quote }}
       docker:
-        enabled: {{ .Values.config.controlPlane.docker.enabled }}
+        enabled: {{ and (ne .Values.mode "outpost") .Values.config.controlPlane.docker.enabled }}
         worker_id: {{ .Values.config.controlPlane.docker.workerId | quote }}
 {{- if .Values.config.controlPlane.docker.hostIds }}
         host_ids:
@@ -75,7 +83,7 @@ data:
         compose_root: {{ .Values.config.controlPlane.docker.composeRoot | quote }}
         poll_interval: {{ .Values.config.controlPlane.docker.pollInterval | quote }}
       agent_runtime:
-        enabled: {{ .Values.config.controlPlane.agentRuntime.enabled }}
+        enabled: {{ and (ne .Values.mode "outpost") .Values.config.controlPlane.agentRuntime.enabled }}
         worker_id: {{ .Values.config.controlPlane.agentRuntime.workerId | quote }}
 {{- if .Values.config.controlPlane.agentRuntime.providerIds }}
         provider_ids:
@@ -102,8 +110,21 @@ data:
 {{- else }}
         providers: {}
 {{- end }}
+      outpost:
+        enabled: {{ eq .Values.mode "outpost" }}
+        agent_id: {{ .Values.config.controlPlane.outpost.agentId | quote }}
+        protocol_version: {{ .Values.config.controlPlane.outpost.protocolVersion | quote }}
+{{- if eq .Values.mode "outpost" }}
+        trust_key_id: {{ required "config.controlPlane.outpost.trustKeyId is required in outpost mode" .Values.config.controlPlane.outpost.trustKeyId | quote }}
+        trust_public_key: {{ required "config.controlPlane.outpost.trustPublicKey is required in outpost mode" .Values.config.controlPlane.outpost.trustPublicKey | quote }}
+{{- else }}
+        trust_key_id: ""
+        trust_public_key: ""
+{{- end }}
+        poll_interval: {{ .Values.config.controlPlane.outpost.pollInterval | quote }}
+        heartbeat_interval: {{ .Values.config.controlPlane.outpost.heartbeatInterval | quote }}
     kubernetes:
-      enabled: {{ .Values.config.kubernetes.enabled }}
+      enabled: {{ and (ne .Values.mode "outpost") .Values.config.kubernetes.enabled }}
       id: {{ .Values.config.kubernetes.id | quote }}
       name: {{ .Values.config.kubernetes.name | quote }}
       kubeconfig: ""

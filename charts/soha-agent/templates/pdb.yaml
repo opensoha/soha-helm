@@ -1,0 +1,13 @@
+{{- if and (eq .Values.mode "outpost") (gt (int .Values.replicaCount) 1) }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "soha-agent.fullname" . }}
+  labels:
+    {{- include "soha-agent.labels" . | nindent 4 }}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      {{- include "soha-agent.selectorLabels" . | nindent 6 }}
+{{- end }}

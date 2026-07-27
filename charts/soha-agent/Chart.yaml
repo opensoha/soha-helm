@@ -2,8 +2,8 @@ apiVersion: v2
 name: soha-agent
 description: OpenSoha cluster agent for remote Kubernetes operations.
 type: application
-version: 0.1.3
-appVersion: "0.1.2"
+version: 0.2.0
+appVersion: "0.1.4"
 home: https://github.com/opensoha/soha-agent
 sources:
   - https://github.com/opensoha/soha-agent
@@ -22,5 +22,7 @@ annotations:
     - name: source
       url: https://github.com/opensoha/soha-agent
   artifacthub.io/changes: |
+    - kind: added
+      description: Add an Identity Outpost mode with protocol v1 signed configuration and forward-auth readiness.
     - kind: changed
-      description: Document the canonical Helm repository and required control-plane runner token.
+      description: Use the canonical ghcr.io/opensoha/soha-agent image.

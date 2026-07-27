@@ -2,6 +2,7 @@
   "$schema": "http://json-schema.org/schema#",
   "type": "object",
   "properties": {
+    "mode": { "type": "string", "enum": ["agent", "outpost"] },
     "image": {
       "type": "object",
       "properties": {
@@ -33,12 +34,51 @@
           "properties": {
             "baseUrl": { "type": "string", "minLength": 1 },
             "agentId": { "type": "string", "minLength": 1 },
-            "runtimeEndpoint": { "type": "string", "minLength": 1 }
+            "runtimeEndpoint": { "type": "string", "minLength": 1 },
+            "outpost": {
+              "type": "object",
+              "properties": {
+                "agentId": { "type": "string" },
+                "protocolVersion": { "type": "string", "enum": ["v1"] },
+                "trustKeyId": { "type": "string" },
+                "trustPublicKey": { "type": "string" },
+                "pollInterval": { "type": "string", "minLength": 1 },
+                "heartbeatInterval": { "type": "string", "minLength": 1 }
+              }
+            }
           }
         }
       }
     }
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "mode": { "const": "outpost" } },
+        "required": ["mode"]
+      },
+      "then": {
+        "properties": {
+          "config": {
+            "properties": {
+              "controlPlane": {
+                "properties": {
+                  "outpost": {
+                    "properties": {
+                      "agentId": { "minLength": 1 },
+                      "trustKeyId": { "minLength": 1 },
+                      "trustPublicKey": { "minLength": 1 }
+                    },
+                    "required": ["agentId", "protocolVersion", "trustKeyId", "trustPublicKey"]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
   "definitions": {
     "generatedSecret": {
       "type": "string",

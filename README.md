@@ -29,6 +29,21 @@ helm install soha-agent opensoha/soha-agent \
   --set-string config.controlPlane.baseUrl="https://soha.example.com"
 ```
 
+Install the Identity Outpost forward-auth runtime with the same chart:
+
+```bash
+helm install soha-outpost opensoha/soha-agent \
+  --namespace soha-outpost \
+  --create-namespace \
+  --set mode=outpost \
+  --set replicaCount=2 \
+  --set-string config.controlPlane.baseUrl="https://soha.example.com" \
+  --set-string config.controlPlane.outpost.trustKeyId="$SOHA_OUTPOST_KEY_ID" \
+  --set-string config.controlPlane.outpost.trustPublicKey="$SOHA_OUTPOST_PUBLIC_KEY" \
+  --set-string secrets.controlPlaneBearerToken="$SOHA_EXECUTION_RUNNER_TOKEN" \
+  --set-string secrets.agentBearerToken="$SOHA_OUTPOST_AGENT_TOKEN"
+```
+
 Install the Hermes Agent Runtime runner:
 
 ```bash
@@ -42,7 +57,7 @@ helm install soha-hermes-agent opensoha/soha-hermes-agent \
 ## Published Charts
 
 - `soha`: OpenSoha control plane with embedded web console and optional PostgreSQL 18.4 + pgvector 0.8.5.
-- `soha-agent`: OpenSoha cluster agent for remote Kubernetes operations.
+- `soha-agent`: OpenSoha cluster agent and optional Identity Outpost runtime.
 - `soha-hermes-agent`: OpenSoha Hermes Agent Runtime runner.
 
 The `soha-cli` artifact is available as a Docker Hub tool image at `yshanchui/soha-cli`. It is not a Helm workload. Use it from multi-stage builds when a container needs the `soha` CLI:

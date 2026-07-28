@@ -47,13 +47,6 @@ config:
   corsAllowedOrigins:
     - https://soha.example.com
   runtime:
-    # Change worker sizing with helm upgrade; the config checksum rolls the Pods.
-    workflowWorkers: 4
-    workflowQueueSize: 64
-    workflowNodeParallelism: 4
-    clusterSyncParallelism: 4
-    copilotInspectionParallelism: 2
-    alertUpsertBatchSize: 100
     # Public project default. Override before exposing a deployment.
     executionRunnerToken: soha-123456789012345678901234567890
   auth:

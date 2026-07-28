@@ -101,12 +101,6 @@ logger:
   level: {{ .Values.config.loggerLevel | quote }}
   format: {{ .Values.config.loggerFormat | quote }}
 runtime:
-  workflow_workers: {{ .Values.config.runtime.workflowWorkers }}
-  workflow_queue_size: {{ .Values.config.runtime.workflowQueueSize }}
-  workflow_node_parallelism: {{ .Values.config.runtime.workflowNodeParallelism }}
-  cluster_sync_parallelism: {{ .Values.config.runtime.clusterSyncParallelism }}
-  copilot_inspection_parallelism: {{ .Values.config.runtime.copilotInspectionParallelism }}
-  alert_upsert_batch_size: {{ .Values.config.runtime.alertUpsertBatchSize }}
   execution_runner_token: {{ .Values.config.runtime.executionRunnerToken | quote }}
 database:
   driver: postgres
@@ -156,13 +150,6 @@ auth:
       - {{ . | quote }}
 {{- end }}
 {{- end }}
-gitlab:
-  enabled: false
-  base_url: https://gitlab.com/api/v4
-  token: ""
-  group_id: ""
-  per_page: 50
-  timeout: 10s
 monitoring:
   enabled: {{ .Values.config.monitoring.enabled }}
   webhook_token: {{ .Values.config.monitoring.webhookToken | quote }}
@@ -171,7 +158,6 @@ swagger:
   path: /swagger/*any
 mcp:
   enabled: {{ .Values.config.mcpEnabled }}
-  default_timeout: 10s
 ai_gateway:
   rate_limit:
     backend: {{ .Values.config.aiGateway.rateLimit.backend | quote }}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Soha Helm"
+  short_description: "Helm charts, schemas, ownership, and release checks"
+  default_prompt: "Use $soha-helm to update and verify a Soha chart and its rendered manifests."

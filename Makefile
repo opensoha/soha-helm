@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := verify
 
-CHARTS := charts/soha charts/soha-agent charts/soha-hermes-agent
+CHARTS := charts/soha charts/soha-agent charts/soha-hermes-agent charts/soha-observability
 PACKAGE_DIR ?= .cr-release-packages
 REPO_DIR ?= .cr-index
 HELM_LINT_AGENT_TOKEN ?= test-agent-token-123456789012345
@@ -25,7 +25,8 @@ verify: lint render-test repo ## Lint charts, test rendering, package them, and 
 	helm repo update >/dev/null; \
 	helm pull opensoha/soha --destination "$$tmp/pull" >/dev/null; \
 	helm pull opensoha/soha-agent --destination "$$tmp/pull" >/dev/null; \
-	helm pull opensoha/soha-hermes-agent --destination "$$tmp/pull" >/dev/null
+	helm pull opensoha/soha-hermes-agent --destination "$$tmp/pull" >/dev/null; \
+	helm pull opensoha/soha-observability --destination "$$tmp/pull" >/dev/null
 
 lint: ## Lint and render all charts.
 	helm lint charts/soha
@@ -34,6 +35,7 @@ lint: ## Lint and render all charts.
 		--set-string secrets.controlPlaneBearerToken="$(HELM_LINT_RUNNER_TOKEN)"
 	helm lint charts/soha-hermes-agent \
 		--set-string secrets.controlPlaneBearerToken="$(HELM_LINT_RUNNER_TOKEN)"
+	helm lint charts/soha-observability
 	helm template soha charts/soha >/tmp/soha-chart.yaml
 	helm template soha-agent charts/soha-agent \
 		--set-string secrets.agentBearerToken="$(HELM_LINT_AGENT_TOKEN)" \
@@ -42,6 +44,7 @@ lint: ## Lint and render all charts.
 	helm template soha-hermes-agent charts/soha-hermes-agent \
 		--set-string secrets.controlPlaneBearerToken="$(HELM_LINT_RUNNER_TOKEN)" \
 		>/tmp/soha-hermes-agent-chart.yaml
+	helm template soha-observability charts/soha-observability >/tmp/soha-observability-chart.yaml
 
 render-test: ## Assert control-plane configuration rollout rendering behavior.
 	./scripts/test-render.sh

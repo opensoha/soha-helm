@@ -1,0 +1,100 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "required": ["profile", "clusterId", "collector", "loki", "persistence"],
+  "properties": {
+    "profile": { "type": "string", "enum": ["collector_only", "starter", "production_external"] },
+    "clusterId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "imagePullSecrets": { "type": "array" },
+    "nameOverride": { "type": "string" },
+    "fullnameOverride": { "type": "string" },
+    "serviceAccount": {
+      "type": "object",
+      "required": ["create", "name"],
+      "properties": {
+        "create": { "type": "boolean" },
+        "name": { "type": "string" }
+      }
+    },
+    "collector": {
+      "type": "object",
+      "required": ["enabled", "image", "namespaceAllowlist", "destination", "resources"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "image": { "$ref": "#/definitions/image" },
+        "namespaceAllowlist": {
+          "type": "array",
+          "maxItems": 100,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$", "maxLength": 253 }
+        },
+        "destination": {
+          "type": "object",
+          "required": ["endpoint", "tenantId", "existingSecret"],
+          "properties": {
+            "endpoint": { "type": "string", "maxLength": 2048 },
+            "tenantId": { "type": "string", "maxLength": 256 },
+            "existingSecret": { "type": "string", "maxLength": 253 }
+          }
+        },
+        "resources": { "type": "object" }
+      }
+    },
+    "loki": {
+      "type": "object",
+      "required": ["enabled", "image", "retentionDays", "resources"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "image": { "$ref": "#/definitions/image" },
+        "retentionDays": { "type": "integer", "minimum": 1, "maximum": 365 },
+        "resources": { "type": "object" }
+      }
+    },
+    "persistence": {
+      "type": "object",
+      "required": ["enabled", "storageClassName", "storageSize"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "storageClassName": { "type": "string", "maxLength": 253 },
+        "storageSize": { "type": "string", "pattern": "^[1-9][0-9]*(Mi|Gi|Ti)$" }
+      }
+    },
+    "nodeSelector": { "type": "object" },
+    "tolerations": { "type": "array" },
+    "affinity": { "type": "object" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "profile": { "const": "starter" } }, "required": ["profile"] },
+      "then": {
+        "properties": {
+          "loki": { "properties": { "enabled": { "const": true } } },
+          "persistence": { "properties": { "enabled": { "const": true } } }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "profile": { "enum": ["collector_only", "production_external"] } }, "required": ["profile"] },
+      "then": {
+        "properties": {
+          "collector": {
+            "properties": {
+              "destination": { "properties": { "endpoint": { "minLength": 1, "format": "uri" } } }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "image": {
+      "type": "object",
+      "required": ["repository", "tag", "pullPolicy"],
+      "properties": {
+        "repository": { "type": "string", "minLength": 1 },
+        "tag": { "type": "string", "minLength": 1 },
+        "pullPolicy": { "type": "string", "enum": ["Always", "IfNotPresent", "Never"] }
+      }
+    }
+  }
+}

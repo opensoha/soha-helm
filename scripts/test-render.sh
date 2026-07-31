@@ -12,6 +12,9 @@ replica_render="$tmp_dir/replica.yaml"
 logger_render="$tmp_dir/logger.yaml"
 agent_render="$tmp_dir/agent.yaml"
 outpost_render="$tmp_dir/outpost.yaml"
+observability_render="$tmp_dir/observability.yaml"
+observability_external_render="$tmp_dir/observability-external.yaml"
+observability_scoped_render="$tmp_dir/observability-scoped.yaml"
 
 helm template soha "$root_dir/charts/soha" >"$default_render"
 helm template soha "$root_dir/charts/soha" \
@@ -30,6 +33,12 @@ helm template soha-outpost "$root_dir/charts/soha-agent" \
   --set-string config.controlPlane.outpost.trustPublicKey=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \
   --set-string secrets.controlPlaneBearerToken=12345678901234567890123456789012 \
   --set-string secrets.agentBearerToken=abcdefghijklmnopqrstuvwxyz123456 >"$outpost_render"
+helm template soha-observability "$root_dir/charts/soha-observability" >"$observability_render"
+helm template soha-observability "$root_dir/charts/soha-observability" \
+  --set profile=production_external \
+  --set-string collector.destination.endpoint=https://loki.example.com/otlp >"$observability_external_render"
+helm template soha-observability "$root_dir/charts/soha-observability" \
+  --set 'collector.namespaceAllowlist={team-a,team-b}' >"$observability_scoped_render"
 
 checksum() {
   sed -n 's/^[[:space:]]*checksum\/config: "\([0-9a-f][0-9a-f]*\)"$/\1/p' "$1" | head -n 1
@@ -88,6 +97,31 @@ if grep -q 'kind: ClusterRole' "$outpost_render" || grep -q 'kind: PersistentVol
   exit 1
 fi
 grep -q 'kind: ClusterRole' "$agent_render"
+grep -q 'kind: DaemonSet' "$observability_render"
+grep -q 'kind: Deployment' "$observability_render"
+grep -q 'type: Recreate' "$observability_render"
+grep -q 'kind: PersistentVolumeClaim' "$observability_render"
+grep -q 'helm.sh/resource-policy: keep' "$observability_render"
+grep -q 'path: /var/log/pods' "$observability_render"
+grep -q 'readOnly: true' "$observability_render"
+grep -q 'runAsUser: 10001' "$observability_render"
+grep -q 'type: RuntimeDefault' "$observability_render"
+grep -q 'endpoint: "https://loki.example.com/otlp"' "$observability_external_render"
+helm template soha-observability "$root_dir/charts/soha-observability" \
+  --set profile=production_external \
+  --set-string collector.destination.endpoint=https://loki.example.com/otlp \
+  --set-string collector.destination.existingSecret=loki-credentials \
+  | grep -Fq 'Authorization: "Bearer ${env:LOKI_BEARER_TOKEN}"'
+if grep -q 'kind: Deployment' "$observability_external_render" || grep -q 'kind: PersistentVolumeClaim' "$observability_external_render"; then
+  echo "external observability profile rendered an in-cluster Loki backend" >&2
+  exit 1
+fi
+grep -q '/var/log/pods/team-a_' "$observability_scoped_render"
+grep -q '/var/log/pods/team-b_' "$observability_scoped_render"
+if grep -q 'kind: ClusterRole' "$observability_render"; then
+  echo "observability collector unexpectedly rendered cluster RBAC" >&2
+  exit 1
+fi
 
 if grep 'checksum/config:' "$default_render" | grep -q 'soha-123456'; then
   echo "config checksum annotation leaked credential plaintext" >&2
@@ -105,6 +139,13 @@ if helm template soha-outpost "$root_dir/charts/soha-agent" \
   --set mode=outpost \
   >"$tmp_dir/invalid-outpost.yaml" 2>/dev/null; then
   echo "outpost mode accepted missing trust key configuration" >&2
+  exit 1
+fi
+
+if helm template soha-observability "$root_dir/charts/soha-observability" \
+  --set profile=collector_only \
+  >"$tmp_dir/invalid-observability.yaml" 2>/dev/null; then
+  echo "external observability profile accepted an empty destination endpoint" >&2
   exit 1
 fi
 

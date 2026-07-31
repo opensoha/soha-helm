@@ -376,4 +376,34 @@ entries:
     urls:
     - https://github.com/opensoha/soha-helm/releases/download/soha-hermes-agent-0.1.0/soha-hermes-agent-0.1.0.tgz
     version: 0.1.0
-generated: "2026-07-27T10:00:05.003772318Z"
+  soha-observability:
+  - annotations:
+      artifacthub.io/category: monitoring-logging
+      artifacthub.io/changes: |
+        - kind: added
+          description: Add explicit opt-in Kubernetes log collection profiles with retained Loki storage.
+      artifacthub.io/license: Apache-2.0
+    apiVersion: v2
+    appVersion: 0.157.0
+    created: "2026-07-31T19:49:42.254238052Z"
+    description: Optional OpenSoha log collection with OpenTelemetry Collector and
+      Loki.
+    digest: 28138b0411434f094ca9297520f31d3ef45efa68fb7643d1ab5e1dc6a1f70ccf
+    home: https://github.com/opensoha/soha-helm
+    keywords:
+    - opensoha
+    - observability
+    - logs
+    - opentelemetry
+    - loki
+    maintainers:
+    - name: OpenSoha
+      url: https://github.com/opensoha
+    name: soha-observability
+    sources:
+    - https://github.com/opensoha/soha-helm
+    type: application
+    urls:
+    - https://github.com/opensoha/soha-helm/releases/download/soha-observability-0.1.0/soha-observability-0.1.0.tgz
+    version: 0.1.0
+generated: "2026-07-31T19:49:42.254265403Z"

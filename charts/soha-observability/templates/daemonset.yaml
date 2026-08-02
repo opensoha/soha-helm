@@ -25,6 +25,8 @@ spec:
         runAsNonRoot: true
         runAsUser: 10001
         runAsGroup: 10001
+        supplementalGroups:
+          - {{ .Values.collector.podLogGroupId }}
         seccompProfile:
           type: RuntimeDefault
       {{- with .Values.imagePullSecrets }}

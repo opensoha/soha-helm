@@ -18,9 +18,10 @@
     },
     "collector": {
       "type": "object",
-      "required": ["enabled", "image", "namespaceAllowlist", "destination", "resources"],
+      "required": ["enabled", "podLogGroupId", "image", "namespaceAllowlist", "destination", "resources"],
       "properties": {
         "enabled": { "type": "boolean" },
+        "podLogGroupId": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
         "image": { "$ref": "#/definitions/image" },
         "namespaceAllowlist": {
           "type": "array",

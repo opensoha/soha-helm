@@ -38,7 +38,8 @@ helm template soha-observability "$root_dir/charts/soha-observability" \
   --set profile=production_external \
   --set-string collector.destination.endpoint=https://loki.example.com/otlp >"$observability_external_render"
 helm template soha-observability "$root_dir/charts/soha-observability" \
-  --set 'collector.namespaceAllowlist={team-a,team-b}' >"$observability_scoped_render"
+  --set 'collector.namespaceAllowlist={team-a,team-b}' \
+  --set collector.podLogGroupId=1234 >"$observability_scoped_render"
 
 checksum() {
   sed -n 's/^[[:space:]]*checksum\/config: "\([0-9a-f][0-9a-f]*\)"$/\1/p' "$1" | head -n 1
@@ -105,6 +106,7 @@ grep -q 'helm.sh/resource-policy: keep' "$observability_render"
 grep -q 'path: /var/log/pods' "$observability_render"
 grep -q 'readOnly: true' "$observability_render"
 grep -q 'runAsUser: 10001' "$observability_render"
+grep -A1 'supplementalGroups:' "$observability_render" | grep -q -- '- 0'
 grep -q 'type: RuntimeDefault' "$observability_render"
 grep -q 'endpoint: "https://loki.example.com/otlp"' "$observability_external_render"
 helm template soha-observability "$root_dir/charts/soha-observability" \
@@ -118,6 +120,7 @@ if grep -q 'kind: Deployment' "$observability_external_render" || grep -q 'kind:
 fi
 grep -q '/var/log/pods/team-a_' "$observability_scoped_render"
 grep -q '/var/log/pods/team-b_' "$observability_scoped_render"
+grep -A1 'supplementalGroups:' "$observability_scoped_render" | grep -q -- '- 1234'
 if grep -q 'kind: ClusterRole' "$observability_render"; then
   echo "observability collector unexpectedly rendered cluster RBAC" >&2
   exit 1

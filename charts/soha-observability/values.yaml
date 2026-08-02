@@ -10,6 +10,7 @@ serviceAccount:
 
 collector:
   enabled: true
+  podLogGroupId: 0
   image:
     repository: otel/opentelemetry-collector-contrib
     tag: 0.157.0

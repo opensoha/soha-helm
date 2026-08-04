@@ -1,6 +1,6 @@
 image:
-  repository: yshanchui/soha-hermes-agent
-  tag: v0.1.2
+  repository: ghcr.io/opensoha/soha-hermes-agent
+  tag: v0.1.5
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []

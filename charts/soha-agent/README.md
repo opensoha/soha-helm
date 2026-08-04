@@ -37,4 +37,4 @@ helm install soha-outpost opensoha/soha-agent \
 
 Outpost mode renders `/readyz` readiness, disables Kubernetes ClusterRole and PVC resources, and creates a PodDisruptionBudget when more than one replica is requested. The ingress controller must call `/api/v1/outpost/forward-auth` with `Authorization: Bearer <agent token>` or `X-Soha-Outpost-Token: <agent token>`.
 
-The control plane and agent do not need matching SemVer values. Both must support Identity Outpost protocol `v1`; the pinned Ed25519 key ID/public key must match the control plane signer. Chart `0.2.0` targets the `soha-agent v0.1.4` release line where protocol `v1` is introduced.
+The control plane and agent do not need matching SemVer values. Both must support Identity Outpost protocol `v1`; the pinned Ed25519 key ID/public key must match the control plane signer. Chart `0.2.1` targets `soha-agent v0.1.5`.

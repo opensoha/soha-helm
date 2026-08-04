@@ -60,10 +60,10 @@ helm install soha-hermes-agent opensoha/soha-hermes-agent \
 - `soha-agent`: OpenSoha cluster agent and optional Identity Outpost runtime.
 - `soha-hermes-agent`: OpenSoha Hermes Agent Runtime runner.
 
-The `soha-cli` artifact is available as a Docker Hub tool image at `yshanchui/soha-cli`. It is not a Helm workload. Use it from multi-stage builds when a container needs the `soha` CLI:
+The `soha-cli` artifact is available from GHCR at `ghcr.io/opensoha/soha-cli`. It is not a Helm workload. Use it from multi-stage builds when a container needs the `soha` CLI:
 
 ```Dockerfile
-COPY --from=yshanchui/soha-cli:v0.1.0 /usr/local/bin/soha /usr/local/bin/soha
+COPY --from=ghcr.io/opensoha/soha-cli:v0.1.5 /usr/local/bin/soha /usr/local/bin/soha
 ```
 
 The bundled database uses `pgvector/pgvector:0.8.5-pg18-trixie`, enables

@@ -164,6 +164,33 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "postgres": {
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            },
+            "required": ["enabled"]
+          }
+        },
+        "required": ["postgres"]
+      },
+      "then": {
+        "properties": {
+          "postgres": {
+            "properties": {
+              "port": {
+                "const": 5432
+              }
+            },
+            "required": ["port"]
+          }
+        }
+      }
     }
   ],
   "definitions": {

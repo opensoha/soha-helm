@@ -10,6 +10,7 @@ feature_render="$tmp_dir/feature.yaml"
 restart_render="$tmp_dir/restart.yaml"
 replica_render="$tmp_dir/replica.yaml"
 logger_render="$tmp_dir/logger.yaml"
+external_postgres_render="$tmp_dir/external-postgres.yaml"
 agent_render="$tmp_dir/agent.yaml"
 outpost_render="$tmp_dir/outpost.yaml"
 observability_render="$tmp_dir/observability.yaml"
@@ -25,6 +26,10 @@ helm template soha "$root_dir/charts/soha" \
   --set replicaCount=2 >"$replica_render"
 helm template soha "$root_dir/charts/soha" \
   --set-string config.loggerLevel=debug >"$logger_render"
+helm template soha "$root_dir/charts/soha" \
+  --set postgres.enabled=false \
+  --set postgres.port=15432 \
+  --set-string postgres.host=postgres.example.com >"$external_postgres_render"
 helm template soha-agent "$root_dir/charts/soha-agent" >"$agent_render"
 helm template soha-outpost "$root_dir/charts/soha-agent" \
   --set mode=outpost \
@@ -89,6 +94,13 @@ rendered_checksum=$(printf '%s' "$rendered_config" | shasum -a 256 | awk '{print
 
 grep -q 'assistant.global: false' "$feature_render"
 grep -q 'replicas: 2' "$replica_render"
+grep -q 'name: wait-for-postgres' "$default_render"
+grep -q -- '--host=soha-postgres' "$default_render"
+grep -q -- '--port=5432' "$default_render"
+if grep -q 'name: wait-for-postgres' "$external_postgres_render"; then
+  echo "external PostgreSQL mode rendered the bundled database wait container" >&2
+  exit 1
+fi
 grep -q 'enabled: true' "$outpost_render"
 grep -q 'protocol_version: "v1"' "$outpost_render"
 grep -q 'path: /readyz' "$outpost_render"
@@ -135,6 +147,13 @@ if helm template soha "$root_dir/charts/soha" \
   --set-string config.modules.ai.features.globalAssistant=not-a-boolean \
   >"$tmp_dir/invalid-feature.yaml" 2>/dev/null; then
   echo "module feature schema accepted a non-boolean value" >&2
+  exit 1
+fi
+
+if helm template soha "$root_dir/charts/soha" \
+  --set postgres.port=15432 \
+  >"$tmp_dir/invalid-bundled-postgres-port.yaml" 2>/dev/null; then
+  echo "bundled PostgreSQL accepted a port other than 5432" >&2
   exit 1
 fi
 

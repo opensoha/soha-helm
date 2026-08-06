@@ -24,6 +24,19 @@ spec:
       {{- end }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.postgres.enabled }}
+      initContainers:
+        - name: wait-for-postgres
+          image: {{ .Values.postgres.image | quote }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          command:
+            - pg_isready
+            - {{ printf "--host=%s" (include "soha.postgresServiceName" .) | quote }}
+            - {{ printf "--port=%v" .Values.postgres.port | quote }}
+            - {{ printf "--username=%s" .Values.postgres.username | quote }}
+            - {{ printf "--dbname=%s" .Values.postgres.database | quote }}
+      {{- end }}
       containers:
         - name: soha
           image: {{ include "soha.image" . | quote }}

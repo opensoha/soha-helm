@@ -14,6 +14,10 @@ helm repo update
 helm install soha opensoha/soha --namespace soha --create-namespace
 ```
 
+When the bundled PostgreSQL deployment is enabled, the Soha Pod waits for the
+database to accept connections before starting the control-plane container.
+External PostgreSQL deployments remain the operator's responsibility.
+
 ## Configuration ownership
 
 Values below `config` are the deployment baseline written to the control-plane

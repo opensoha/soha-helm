@@ -12,6 +12,7 @@ replica_render="$tmp_dir/replica.yaml"
 logger_render="$tmp_dir/logger.yaml"
 external_postgres_render="$tmp_dir/external-postgres.yaml"
 agent_render="$tmp_dir/agent.yaml"
+standalone_agent_render="$tmp_dir/standalone-agent.yaml"
 outpost_render="$tmp_dir/outpost.yaml"
 observability_render="$tmp_dir/observability.yaml"
 observability_external_render="$tmp_dir/observability-external.yaml"
@@ -31,6 +32,8 @@ helm template soha "$root_dir/charts/soha" \
   --set postgres.port=15432 \
   --set-string postgres.host=postgres.example.com >"$external_postgres_render"
 helm template soha-agent "$root_dir/charts/soha-agent" >"$agent_render"
+helm template soha-agent "$root_dir/charts/soha-agent" \
+  --set config.controlPlane.enabled=false >"$standalone_agent_render"
 helm template soha-outpost "$root_dir/charts/soha-agent" \
   --set mode=outpost \
   --set replicaCount=2 \
@@ -110,6 +113,10 @@ if grep -q 'kind: ClusterRole' "$outpost_render" || grep -q 'kind: PersistentVol
   exit 1
 fi
 grep -q 'kind: ClusterRole' "$agent_render"
+if grep -q 'SOHA_AGENT_CONTROL_PLANE_BEARER_TOKEN' "$standalone_agent_render"; then
+  echo "standalone agent rendered an unused control-plane token reference" >&2
+  exit 1
+fi
 grep -q 'kind: DaemonSet' "$observability_render"
 grep -q 'kind: Deployment' "$observability_render"
 grep -q 'type: Recreate' "$observability_render"

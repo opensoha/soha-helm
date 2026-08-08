@@ -37,6 +37,7 @@ spec:
           env:
             - name: SOHA_AGENT_CONFIG_FILE
               value: /etc/soha-agent/agent.config.yaml
+{{- if .Values.config.controlPlane.enabled }}
             - name: SOHA_AGENT_CONTROL_PLANE_BEARER_TOKEN
               valueFrom:
                 secretKeyRef:
@@ -46,6 +47,7 @@ spec:
 {{- else }}
                   name: {{ required "secrets.controlPlaneExistingSecret.name is required when controlPlaneBearerToken is empty" .Values.secrets.controlPlaneExistingSecret.name }}
                   key: {{ required "secrets.controlPlaneExistingSecret.key is required when controlPlaneBearerToken is empty" .Values.secrets.controlPlaneExistingSecret.key }}
+{{- end }}
 {{- end }}
             - name: SOHA_AGENT_AUTH_BEARER_TOKEN
               valueFrom:

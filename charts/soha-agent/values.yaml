@@ -24,9 +24,9 @@ serviceAccount:
 secrets:
   # Generated on first install when empty, then reused from the live Secret.
   agentBearerToken: ""
-  # Set this only when the control-plane token is managed outside Kubernetes.
+  # Used only when config.controlPlane.enabled is true and the token is managed here.
   controlPlaneBearerToken: ""
-  # By default consume only the runner token projected by the soha Chart.
+  # Used only when config.controlPlane.enabled is true. By default consume the runner token projected by the soha Chart.
   controlPlaneExistingSecret:
     name: soha-config
     key: execution-runner-token

@@ -113,6 +113,9 @@ if grep -q 'kind: ClusterRole' "$outpost_render" || grep -q 'kind: PersistentVol
   exit 1
 fi
 grep -q 'kind: ClusterRole' "$agent_render"
+for resource in serviceaccounts endpointslices storageclasses priorityclasses runtimeclasses mutatingwebhookconfigurations gatewayclasses; do
+  grep -q "$resource" "$agent_render"
+done
 if grep -q 'SOHA_AGENT_CONTROL_PLANE_BEARER_TOKEN' "$standalone_agent_render"; then
   echo "standalone agent rendered an unused control-plane token reference" >&2
   exit 1

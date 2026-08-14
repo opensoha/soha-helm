@@ -1,0 +1,21 @@
+{{- if and .Values.collector.enabled .Values.collector.otlp.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "soha-observability.fullname" . }}-collector
+  labels:
+    {{- include "soha-observability.labels" . | nindent 4 }}
+    app.kubernetes.io/component: collector
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "soha-observability.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: collector
+  ports:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: otlp-grpc
+    - name: otlp-http
+      port: 4318
+      targetPort: otlp-http
+{{- end }}

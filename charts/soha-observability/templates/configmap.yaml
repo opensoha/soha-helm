@@ -9,7 +9,12 @@ data:
     extensions:
       health_check:
         endpoint: 0.0.0.0:13133
+{{- if .Values.collector.otlp.enabled }}
+      bearertokenauth/ingest:
+        filename: /etc/otel-auth/bearer_token
+{{- end }}
     receivers:
+{{- if has "logs" .Values.collector.signalAllowlist }}
       filelog:
         include:
 {{- if .Values.collector.namespaceAllowlist }}
@@ -23,17 +28,67 @@ data:
         start_at: end
         operators:
           - type: container
+{{- end }}
+{{- if .Values.collector.otlp.enabled }}
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+            auth:
+              authenticator: bearertokenauth/ingest
+            tls:
+              cert_file: /etc/otel-auth/tls.crt
+              key_file: /etc/otel-auth/tls.key
+          http:
+            endpoint: 0.0.0.0:4318
+            auth:
+              authenticator: bearertokenauth/ingest
+            tls:
+              cert_file: /etc/otel-auth/tls.crt
+              key_file: /etc/otel-auth/tls.key
+{{- end }}
     processors:
       memory_limiter:
         check_interval: 1s
         limit_mib: 384
       resource:
         attributes:
+          - key: soha.workspace.id
+            action: upsert
+            value: {{ .Values.workspaceId | quote }}
           - key: k8s.cluster.name
             action: upsert
             value: {{ .Values.clusterId | quote }}
+{{- if .Values.environment }}
+          - key: deployment.environment.name
+            action: upsert
+            value: {{ .Values.environment | quote }}
+{{- end }}
+{{- if or .Values.collector.redaction.deleteAttributes .Values.collector.redaction.hashAttributes }}
+      attributes/redact:
+        actions:
+{{- range .Values.collector.redaction.deleteAttributes }}
+          - key: {{ . | quote }}
+            action: delete
+{{- end }}
+{{- range .Values.collector.redaction.hashAttributes }}
+          - key: {{ . | quote }}
+            action: hash
+{{- end }}
+{{- end }}
+{{- if or (has "metrics" .Values.collector.signalAllowlist) (has "traces" .Values.collector.signalAllowlist) }}
+      filter/require_service:
+        error_mode: ignore
+        traces:
+          span:
+            - 'resource.attributes["service.name"] == nil'
+        metrics:
+          metric:
+            - 'resource.attributes["service.name"] == nil'
+{{- end }}
       batch: {}
     exporters:
+{{- if has "logs" .Values.collector.signalAllowlist }}
       otlphttp/loki:
         endpoint: {{ include "soha-observability.lokiEndpoint" . | quote }}
 {{- if or .Values.collector.destination.tenantId .Values.collector.destination.existingSecret }}
@@ -45,13 +100,78 @@ data:
           Authorization: "Bearer ${env:LOKI_BEARER_TOKEN}"
 {{- end }}
 {{- end }}
+{{- end }}
+{{- if has "metrics" .Values.collector.signalAllowlist }}
+      prometheusremotewrite:
+        endpoint: {{ .Values.collector.metrics.endpoint | quote }}
+{{- if .Values.collector.metrics.existingSecret }}
+        headers:
+          Authorization: "Bearer ${env:METRICS_BEARER_TOKEN}"
+{{- end }}
+        resource_to_telemetry_conversion:
+          enabled: true
+{{- end }}
+{{- if has "traces" .Values.collector.signalAllowlist }}
+      otlp/traces:
+        endpoint: {{ .Values.collector.traces.endpoint | quote }}
+{{- if .Values.collector.traces.insecure }}
+        tls:
+          insecure: true
+{{- end }}
+{{- if .Values.collector.traces.existingSecret }}
+        headers:
+          Authorization: "Bearer ${env:TRACES_BEARER_TOKEN}"
+{{- end }}
+{{- end }}
     service:
-      extensions: [health_check]
+      extensions:
+        - health_check
+{{- if .Values.collector.otlp.enabled }}
+        - bearertokenauth/ingest
+{{- end }}
       pipelines:
+{{- if has "logs" .Values.collector.signalAllowlist }}
         logs:
-          receivers: [filelog]
-          processors: [memory_limiter, resource, batch]
+          receivers:
+            - filelog
+{{- if .Values.collector.otlp.enabled }}
+            - otlp
+{{- end }}
+          processors:
+            - memory_limiter
+            - resource
+{{- if or .Values.collector.redaction.deleteAttributes .Values.collector.redaction.hashAttributes }}
+            - attributes/redact
+{{- end }}
+            - batch
           exporters: [otlphttp/loki]
+{{- end }}
+{{- if has "metrics" .Values.collector.signalAllowlist }}
+        metrics:
+          receivers: [otlp]
+          processors:
+            - memory_limiter
+            - resource
+{{- if or .Values.collector.redaction.deleteAttributes .Values.collector.redaction.hashAttributes }}
+            - attributes/redact
+{{- end }}
+            - filter/require_service
+            - batch
+          exporters: [prometheusremotewrite]
+{{- end }}
+{{- if has "traces" .Values.collector.signalAllowlist }}
+        traces:
+          receivers: [otlp]
+          processors:
+            - memory_limiter
+            - resource
+{{- if or .Values.collector.redaction.deleteAttributes .Values.collector.redaction.hashAttributes }}
+            - attributes/redact
+{{- end }}
+            - filter/require_service
+            - batch
+          exporters: [otlp/traces]
+{{- end }}
 {{- if eq .Values.profile "starter" }}
   loki.yaml: |
     auth_enabled: false

@@ -1,5 +1,7 @@
 profile: starter
+workspaceId: default
 clusterId: default
+environment: ""
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
@@ -11,15 +13,37 @@ serviceAccount:
 collector:
   enabled: true
   podLogGroupId: 0
+  signalAllowlist:
+    - logs
   image:
     repository: otel/opentelemetry-collector-contrib
     tag: 0.157.0
     pullPolicy: IfNotPresent
   namespaceAllowlist: []
+  otlp:
+    enabled: false
+    existingSecret: ""
   destination:
     endpoint: ""
     tenantId: ""
     existingSecret: ""
+  metrics:
+    endpoint: ""
+    existingSecret: ""
+  traces:
+    endpoint: ""
+    existingSecret: ""
+    insecure: false
+  redaction:
+    deleteAttributes:
+      - db.connection_string
+      - http.request.header.authorization
+      - http.request.header.cookie
+      - http.response.header.set-cookie
+      - url.full
+    hashAttributes:
+      - enduser.id
+      - user.id
   resources:
     requests:
       cpu: 100m

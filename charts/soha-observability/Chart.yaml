@@ -1,8 +1,8 @@
 apiVersion: v2
 name: soha-observability
-description: Optional OpenSoha log collection with OpenTelemetry Collector and Loki.
+description: Optional OpenSoha telemetry collection with OpenTelemetry Collector and Loki.
 type: application
-version: 0.1.0
+version: 0.2.0
 appVersion: "0.157.0"
 home: https://github.com/opensoha/soha-helm
 sources:
@@ -14,6 +14,8 @@ keywords:
   - opensoha
   - observability
   - logs
+  - metrics
+  - traces
   - opentelemetry
   - loki
 annotations:
@@ -21,4 +23,4 @@ annotations:
   artifacthub.io/license: Apache-2.0
   artifacthub.io/changes: |
     - kind: added
-      description: Add explicit opt-in Kubernetes log collection profiles with retained Loki storage.
+      description: Add authenticated OTLP ingestion and external metrics and trace pipelines while preserving the logs-only default.

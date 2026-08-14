@@ -54,11 +54,20 @@ helm install soha-hermes-agent opensoha/soha-hermes-agent \
   --set-string controlPlane.baseUrl="https://soha.example.com"
 ```
 
+Install the optional logs-first observability add-on:
+
+```bash
+helm install soha-observability opensoha/soha-observability \
+  --namespace soha-observability \
+  --create-namespace
+```
+
 ## Published Charts
 
 - `soha`: OpenSoha control plane with embedded web console and optional PostgreSQL 18.4 + pgvector 0.8.5.
 - `soha-agent`: OpenSoha cluster agent and optional Identity Outpost runtime.
 - `soha-hermes-agent`: OpenSoha Hermes Agent Runtime runner.
+- `soha-observability`: optional logs-first OpenTelemetry Collector with starter Loki or external telemetry destinations.
 
 The `soha-cli` artifact is available from GHCR at `ghcr.io/opensoha/soha-cli`. It is not a Helm workload. Use it from multi-stage builds when a container needs the `soha` CLI:
 

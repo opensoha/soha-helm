@@ -17,6 +17,7 @@ outpost_render="$tmp_dir/outpost.yaml"
 observability_render="$tmp_dir/observability.yaml"
 observability_external_render="$tmp_dir/observability-external.yaml"
 observability_scoped_render="$tmp_dir/observability-scoped.yaml"
+observability_three_signal_render="$tmp_dir/observability-three-signal.yaml"
 
 helm template soha "$root_dir/charts/soha" >"$default_render"
 helm template soha "$root_dir/charts/soha" \
@@ -48,6 +49,20 @@ helm template soha-observability "$root_dir/charts/soha-observability" \
 helm template soha-observability "$root_dir/charts/soha-observability" \
   --set 'collector.namespaceAllowlist={team-a,team-b}' \
   --set collector.podLogGroupId=1234 >"$observability_scoped_render"
+helm template soha-observability "$root_dir/charts/soha-observability" \
+  --set profile=production_external \
+  --set-string workspaceId=workspace-a \
+  --set-string clusterId=cluster-a \
+  --set-string environment=production \
+  --set-string collector.destination.endpoint=https://loki.example.com/otlp \
+  --set 'collector.signalAllowlist={logs,metrics,traces}' \
+  --set collector.otlp.enabled=true \
+  --set-string collector.otlp.existingSecret=otel-ingest \
+  --set-string collector.metrics.endpoint=https://prometheus.example.com/api/v1/write \
+  --set-string collector.metrics.existingSecret=metrics-token \
+  --set-string collector.traces.endpoint=skywalking.example.com:11800 \
+  --set-string collector.traces.existingSecret=traces-token \
+  --set collector.traces.insecure=true >"$observability_three_signal_render"
 
 checksum() {
   sed -n 's/^[[:space:]]*checksum\/config: "\([0-9a-f][0-9a-f]*\)"$/\1/p' "$1" | head -n 1
@@ -130,6 +145,10 @@ grep -q 'readOnly: true' "$observability_render"
 grep -q 'runAsUser: 10001' "$observability_render"
 grep -A1 'supplementalGroups:' "$observability_render" | grep -q -- '- 0'
 grep -q 'type: RuntimeDefault' "$observability_render"
+if grep -q 'bearertokenauth/ingest' "$observability_render" || grep -q 'name: otlp-grpc' "$observability_render"; then
+  echo "default observability profile unexpectedly exposed OTLP ingestion" >&2
+  exit 1
+fi
 grep -q 'endpoint: "https://loki.example.com/otlp"' "$observability_external_render"
 helm template soha-observability "$root_dir/charts/soha-observability" \
   --set profile=production_external \
@@ -143,6 +162,33 @@ fi
 grep -q '/var/log/pods/team-a_' "$observability_scoped_render"
 grep -q '/var/log/pods/team-b_' "$observability_scoped_render"
 grep -A1 'supplementalGroups:' "$observability_scoped_render" | grep -q -- '- 1234'
+grep -q 'bearertokenauth/ingest:' "$observability_three_signal_render"
+grep -q 'filename: /etc/otel-auth/bearer_token' "$observability_three_signal_render"
+grep -q 'cert_file: /etc/otel-auth/tls.crt' "$observability_three_signal_render"
+grep -q 'key_file: /etc/otel-auth/tls.key' "$observability_three_signal_render"
+grep -q 'name: otlp-grpc' "$observability_three_signal_render"
+grep -q 'name: otlp-http' "$observability_three_signal_render"
+grep -q 'secretName: "otel-ingest"' "$observability_three_signal_render"
+grep -q 'key: soha.workspace.id' "$observability_three_signal_render"
+grep -q 'value: "workspace-a"' "$observability_three_signal_render"
+grep -q 'key: deployment.environment.name' "$observability_three_signal_render"
+grep -q 'filter/require_service:' "$observability_three_signal_render"
+grep -q 'resource.attributes\["service.name"\] == nil' "$observability_three_signal_render"
+grep -q 'prometheusremotewrite:' "$observability_three_signal_render"
+grep -q 'endpoint: "https://prometheus.example.com/api/v1/write"' "$observability_three_signal_render"
+grep -q 'otlp/traces:' "$observability_three_signal_render"
+grep -q 'endpoint: "skywalking.example.com:11800"' "$observability_three_signal_render"
+grep -A3 'otlp/traces:' "$observability_three_signal_render" | grep -q 'insecure: true'
+grep -q 'name: METRICS_BEARER_TOKEN' "$observability_three_signal_render"
+grep -q 'name: TRACES_BEARER_TOKEN' "$observability_three_signal_render"
+grep -q 'key: "http.request.header.authorization"' "$observability_three_signal_render"
+grep -A1 'key: "http.request.header.authorization"' "$observability_three_signal_render" | grep -q 'action: delete'
+grep -q 'key: "enduser.id"' "$observability_three_signal_render"
+grep -A1 'key: "enduser.id"' "$observability_three_signal_render" | grep -q 'action: hash'
+if grep -q 'metrics-token-value\|traces-token-value\|otel-ingest-token-value' "$observability_three_signal_render"; then
+  echo "observability render leaked credential plaintext" >&2
+  exit 1
+fi
 if grep -q 'kind: ClusterRole' "$observability_render"; then
   echo "observability collector unexpectedly rendered cluster RBAC" >&2
   exit 1
@@ -178,6 +224,39 @@ if helm template soha-observability "$root_dir/charts/soha-observability" \
   --set profile=collector_only \
   >"$tmp_dir/invalid-observability.yaml" 2>/dev/null; then
   echo "external observability profile accepted an empty destination endpoint" >&2
+  exit 1
+fi
+
+if helm template soha-observability "$root_dir/charts/soha-observability" \
+  --set collector.otlp.enabled=true \
+  >"$tmp_dir/invalid-observability-otlp-secret.yaml" 2>/dev/null; then
+  echo "OTLP ingestion accepted a missing TLS and bearer Secret" >&2
+  exit 1
+fi
+
+if helm template soha-observability "$root_dir/charts/soha-observability" \
+  --set 'collector.signalAllowlist={logs,metrics}' \
+  --set collector.otlp.enabled=true \
+  --set-string collector.otlp.existingSecret=otel-ingest \
+  >"$tmp_dir/invalid-observability-metrics-endpoint.yaml" 2>/dev/null; then
+  echo "metrics pipeline accepted a missing remote write endpoint" >&2
+  exit 1
+fi
+
+if helm template soha-observability "$root_dir/charts/soha-observability" \
+  --set 'collector.signalAllowlist={logs,traces}' \
+  --set collector.otlp.enabled=true \
+  --set-string collector.otlp.existingSecret=otel-ingest \
+  >"$tmp_dir/invalid-observability-traces-endpoint.yaml" 2>/dev/null; then
+  echo "traces pipeline accepted a missing OTLP endpoint" >&2
+  exit 1
+fi
+
+if helm template soha-observability "$root_dir/charts/soha-observability" \
+  --set 'collector.signalAllowlist={logs,metrics}' \
+  --set-string collector.metrics.endpoint=https://prometheus.example.com/api/v1/write \
+  >"$tmp_dir/invalid-observability-metrics-receiver.yaml" 2>/dev/null; then
+  echo "metrics pipeline accepted disabled OTLP ingestion" >&2
   exit 1
 fi
 

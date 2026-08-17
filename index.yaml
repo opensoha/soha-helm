@@ -474,6 +474,37 @@ entries:
       artifacthub.io/category: monitoring-logging
       artifacthub.io/changes: |
         - kind: added
+          description: Add authenticated OTLP ingestion and external metrics and trace pipelines while preserving the logs-only default.
+      artifacthub.io/license: Apache-2.0
+    apiVersion: v2
+    appVersion: 0.157.0
+    created: "2026-08-17T06:42:45.579774407Z"
+    description: Optional OpenSoha telemetry collection with OpenTelemetry Collector
+      and Loki.
+    digest: 901ab1c3eadfc8fd922cdb41d281e904c2512dbdd7288e2864c29de701bfc936
+    home: https://github.com/opensoha/soha-helm
+    keywords:
+    - opensoha
+    - observability
+    - logs
+    - metrics
+    - traces
+    - opentelemetry
+    - loki
+    maintainers:
+    - name: OpenSoha
+      url: https://github.com/opensoha
+    name: soha-observability
+    sources:
+    - https://github.com/opensoha/soha-helm
+    type: application
+    urls:
+    - https://github.com/opensoha/soha-helm/releases/download/soha-observability-0.2.0/soha-observability-0.2.0.tgz
+    version: 0.2.0
+  - annotations:
+      artifacthub.io/category: monitoring-logging
+      artifacthub.io/changes: |
+        - kind: added
           description: Add explicit opt-in Kubernetes log collection profiles with retained Loki storage.
       artifacthub.io/license: Apache-2.0
     apiVersion: v2
@@ -499,4 +530,34 @@ entries:
     urls:
     - https://github.com/opensoha/soha-helm/releases/download/soha-observability-0.1.0/soha-observability-0.1.0.tgz
     version: 0.1.0
-generated: "2026-08-04T03:34:35.177137141Z"
+  soha-operator:
+  - annotations:
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/changes: |
+        - kind: added
+          description: Add the WorkloadCronJob CRD and controller with selected container runtime input synchronization.
+      artifacthub.io/license: Apache-2.0
+    apiVersion: v2
+    appVersion: 0.1.0
+    created: "2026-08-17T06:42:45.81041018Z"
+    description: Optional OpenSoha Kubernetes operator for WorkloadCronJob and cluster-local
+      automation.
+    digest: 9709900e9a6d9d5dc86db9b41fb336ebee1c1f4fa0fe0fc005083004d808dccb
+    home: https://github.com/opensoha/soha-operator
+    keywords:
+    - opensoha
+    - operator
+    - kubernetes
+    - cronjob
+    maintainers:
+    - name: OpenSoha
+      url: https://github.com/opensoha
+    name: soha-operator
+    sources:
+    - https://github.com/opensoha/soha-operator
+    - https://github.com/opensoha/soha-helm
+    type: application
+    urls:
+    - https://github.com/opensoha/soha-helm/releases/download/soha-operator-0.1.0/soha-operator-0.1.0.tgz
+    version: 0.1.0
+generated: "2026-08-17T06:42:45.810454073Z"

@@ -4,6 +4,39 @@ entries:
   - annotations:
       artifacthub.io/category: integration-delivery
       artifacthub.io/changes: |
+        - kind: fixed
+          description: Persist software package and companion data on a writable volume with Soha v0.1.7.
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: source
+          url: https://github.com/opensoha/soha
+        - name: docs
+          url: https://docs.opensoha.dev/
+    apiVersion: v2
+    appVersion: 0.1.7
+    created: "2026-08-17T08:27:17.57582861Z"
+    description: OpenSoha control plane with embedded web console and optional PostgreSQL.
+    digest: 8d35d77fd617c9517d3668e881292bf9ef53dad2a0c3962f223a58949a8c62fe
+    home: https://github.com/opensoha/soha
+    keywords:
+    - opensoha
+    - soha
+    - ai-gateway
+    - delivery
+    - kubernetes
+    maintainers:
+    - name: OpenSoha
+      url: https://github.com/opensoha
+    name: soha
+    sources:
+    - https://github.com/opensoha/soha
+    type: application
+    urls:
+    - https://github.com/opensoha/soha-helm/releases/download/soha-0.1.8/soha-0.1.8.tgz
+    version: 0.1.8
+  - annotations:
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/changes: |
         - kind: changed
           description: Run the Soha v0.1.6 control plane with workload snapshot generation and hardened runtime behavior.
       artifacthub.io/license: Apache-2.0
@@ -653,4 +686,4 @@ entries:
     urls:
     - https://github.com/opensoha/soha-helm/releases/download/soha-operator-0.1.0/soha-operator-0.1.0.tgz
     version: 0.1.0
-generated: "2026-08-17T07:26:28.494304393Z"
+generated: "2026-08-17T08:27:17.575878744Z"

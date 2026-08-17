@@ -84,13 +84,20 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Verify Operator image
+      - name: Verify runtime images
         if: github.event_name != 'pull_request'
         run: |
           set -euo pipefail
-          version="$(helm show chart charts/soha-operator | awk '$1 == "appVersion:" { gsub(/"/, "", $2); print $2 }')"
-          test -n "${version}"
-          docker manifest inspect "ghcr.io/opensoha/soha-operator:${version}" >/dev/null
+          while IFS='|' read -r chart repository prefix; do
+            version="$(helm show chart "charts/${chart}" | awk '$1 == "appVersion:" { gsub(/"/, "", $2); print $2 }')"
+            test -n "${version}"
+            docker manifest inspect "${repository}:${prefix}${version}" >/dev/null
+          done <<'EOF'
+          soha|ghcr.io/opensoha/soha|v
+          soha-agent|ghcr.io/opensoha/soha-agent|v
+          soha-hermes-agent|ghcr.io/opensoha/soha-hermes-agent|v
+          soha-operator|ghcr.io/opensoha/soha-operator|
+          EOF
       - name: Release Helm charts
         if: github.event_name != 'pull_request'
         uses: helm/chart-releaser-action@v1.7.0

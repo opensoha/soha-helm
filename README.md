@@ -1,6 +1,6 @@
 # OpenSoha Helm Charts
 
-This repository owns and publishes the OpenSoha Helm charts.
+This repository owns and publishes the official Helm charts for the Soha control plane, agents, observability add-on, and Kubernetes operator.
 
 ## Usage
 
@@ -54,11 +54,29 @@ helm install soha-hermes-agent opensoha/soha-hermes-agent \
   --set-string controlPlane.baseUrl="https://soha.example.com"
 ```
 
+Install the optional logs-first observability add-on:
+
+```bash
+helm install soha-observability opensoha/soha-observability \
+  --namespace soha-observability \
+  --create-namespace
+```
+
+Install the optional Kubernetes operator for `WorkloadCronJob`:
+
+```bash
+helm install soha-operator opensoha/soha-operator \
+  --namespace soha-operator \
+  --create-namespace
+```
+
 ## Published Charts
 
 - `soha`: OpenSoha control plane with embedded web console and optional PostgreSQL 18.4 + pgvector 0.8.5.
 - `soha-agent`: OpenSoha cluster agent and optional Identity Outpost runtime.
 - `soha-hermes-agent`: OpenSoha Hermes Agent Runtime runner.
+- `soha-observability`: optional logs-first OpenTelemetry Collector with starter Loki or external telemetry destinations.
+- `soha-operator`: optional Kubernetes operator and `WorkloadCronJob` CRD for CronJobs that follow selected container runtime inputs from a source workload.
 
 The `soha-cli` artifact is available from GHCR at `ghcr.io/opensoha/soha-cli`. It is not a Helm workload. Use it from multi-stage builds when a container needs the `soha` CLI:
 
@@ -85,6 +103,8 @@ If a chart version changed, the workflow publishes it through both supported cha
 
 - GitHub Releases plus `index.yaml` on the `gh-pages` branch, published through GitHub Pages at `https://opensoha.github.io/soha-helm`.
 - GHCR OCI artifacts below `oci://ghcr.io/opensoha/charts`; publish them as public packages before documenting them as an installation channel.
+
+The `soha-operator` chart uses its `appVersion` as the default tag for `ghcr.io/opensoha/soha-operator`, so a chart release always selects a versioned Operator image rather than `latest`.
 
 The workflow deploys the `gh-pages` branch as a GitHub Pages site after each successful chart release. Enable GitHub Pages for this repository once in **Settings -> Pages** (source: GitHub Actions); subsequent releases appear under the workflow's `github-pages` environment with the site URL.
 

@@ -5,6 +5,39 @@ entries:
       artifacthub.io/category: integration-delivery
       artifacthub.io/changes: |
         - kind: changed
+          description: Run the Soha v0.1.6 control plane with workload snapshot generation and hardened runtime behavior.
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: source
+          url: https://github.com/opensoha/soha
+        - name: docs
+          url: https://docs.opensoha.dev/
+    apiVersion: v2
+    appVersion: 0.1.6
+    created: "2026-08-17T07:26:28.269928401Z"
+    description: OpenSoha control plane with embedded web console and optional PostgreSQL.
+    digest: 413bd47409d44ce18d179ac8b70fcebf57c500eac559ed656c849f53fb276052
+    home: https://github.com/opensoha/soha
+    keywords:
+    - opensoha
+    - soha
+    - ai-gateway
+    - delivery
+    - kubernetes
+    maintainers:
+    - name: OpenSoha
+      url: https://github.com/opensoha
+    name: soha
+    sources:
+    - https://github.com/opensoha/soha
+    type: application
+    urls:
+    - https://github.com/opensoha/soha-helm/releases/download/soha-0.1.7/soha-0.1.7.tgz
+    version: 0.1.7
+  - annotations:
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/changes: |
+        - kind: changed
           description: Run the Soha v0.1.5 control plane with Vault-backed secret resolution.
       artifacthub.io/license: Apache-2.0
       artifacthub.io/links: |
@@ -212,6 +245,36 @@ entries:
       artifacthub.io/category: integration-delivery
       artifacthub.io/changes: |
         - kind: changed
+          description: Run the soha-agent v0.1.6 release with Docker-only runtime isolation.
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: source
+          url: https://github.com/opensoha/soha-agent
+    apiVersion: v2
+    appVersion: 0.1.6
+    created: "2026-08-17T07:26:28.373156739Z"
+    description: OpenSoha cluster agent for remote Kubernetes operations.
+    digest: 7accf15e4bffcecd9d2fb4445281cc7752835453425c0c00ab6d5a7ecf99ec8e
+    home: https://github.com/opensoha/soha-agent
+    keywords:
+    - opensoha
+    - soha-agent
+    - kubernetes
+    - delivery
+    maintainers:
+    - name: OpenSoha
+      url: https://github.com/opensoha
+    name: soha-agent
+    sources:
+    - https://github.com/opensoha/soha-agent
+    type: application
+    urls:
+    - https://github.com/opensoha/soha-helm/releases/download/soha-agent-0.2.2/soha-agent-0.2.2.tgz
+    version: 0.2.2
+  - annotations:
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/changes: |
+        - kind: changed
           description: Run the soha-agent v0.1.5 release.
       artifacthub.io/license: Apache-2.0
       artifacthub.io/links: |
@@ -355,6 +418,36 @@ entries:
     - https://github.com/opensoha/soha-helm/releases/download/soha-agent-0.1.0/soha-agent-0.1.0.tgz
     version: 0.1.0
   soha-hermes-agent:
+  - annotations:
+      artifacthub.io/category: ai-machine-learning
+      artifacthub.io/changes: |
+        - kind: changed
+          description: Run the Hermes runner from the soha-agent v0.1.6 release.
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: source
+          url: https://github.com/opensoha/soha-agent
+    apiVersion: v2
+    appVersion: 0.1.6
+    created: "2026-08-17T07:26:28.494226648Z"
+    description: OpenSoha Hermes Agent Runtime runner.
+    digest: 1da995d0660ac81c9548b42c5c364b2ad7e2760ee9582d9ea1137b6357dd53c5
+    home: https://github.com/opensoha/soha-agent
+    keywords:
+    - opensoha
+    - soha-hermes-agent
+    - hermes
+    - ai-runtime
+    maintainers:
+    - name: OpenSoha
+      url: https://github.com/opensoha
+    name: soha-hermes-agent
+    sources:
+    - https://github.com/opensoha/soha-agent
+    type: application
+    urls:
+    - https://github.com/opensoha/soha-helm/releases/download/soha-hermes-agent-0.1.5/soha-hermes-agent-0.1.5.tgz
+    version: 0.1.5
   - annotations:
       artifacthub.io/category: ai-machine-learning
       artifacthub.io/changes: |
@@ -560,4 +653,4 @@ entries:
     urls:
     - https://github.com/opensoha/soha-helm/releases/download/soha-operator-0.1.0/soha-operator-0.1.0.tgz
     version: 0.1.0
-generated: "2026-08-17T06:42:45.810454073Z"
+generated: "2026-08-17T07:26:28.494304393Z"

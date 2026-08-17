@@ -18,6 +18,9 @@ observability_render="$tmp_dir/observability.yaml"
 observability_external_render="$tmp_dir/observability-external.yaml"
 observability_scoped_render="$tmp_dir/observability-scoped.yaml"
 observability_three_signal_render="$tmp_dir/observability-three-signal.yaml"
+operator_render="$tmp_dir/operator.yaml"
+operator_external_rbac_render="$tmp_dir/operator-external-rbac.yaml"
+operator_crd="$root_dir/charts/soha-operator/crds/workloads.soha.io_workloadcronjobs.yaml"
 
 helm template soha "$root_dir/charts/soha" >"$default_render"
 helm template soha "$root_dir/charts/soha" \
@@ -63,6 +66,12 @@ helm template soha-observability "$root_dir/charts/soha-observability" \
   --set-string collector.traces.endpoint=skywalking.example.com:11800 \
   --set-string collector.traces.existingSecret=traces-token \
   --set collector.traces.insecure=true >"$observability_three_signal_render"
+helm template soha-operator "$root_dir/charts/soha-operator" \
+  --include-crds >"$operator_render"
+helm template soha-operator "$root_dir/charts/soha-operator" \
+  --set rbac.create=false \
+  --set serviceAccount.create=false \
+  --set-string serviceAccount.name=existing-operator >"$operator_external_rbac_render"
 
 checksum() {
   sed -n 's/^[[:space:]]*checksum\/config: "\([0-9a-f][0-9a-f]*\)"$/\1/p' "$1" | head -n 1
@@ -193,6 +202,28 @@ if grep -q 'kind: ClusterRole' "$observability_render"; then
   echo "observability collector unexpectedly rendered cluster RBAC" >&2
   exit 1
 fi
+grep -q 'name: workloadcronjobs.workloads.soha.io' "$operator_render"
+grep -q 'kind: ClusterRole' "$operator_render"
+grep -q 'kind: Role' "$operator_render"
+grep -q 'resources: \[leases\]' "$operator_render"
+grep -q -- '--leader-elect=true' "$operator_render"
+grep -q 'runAsNonRoot: true' "$operator_render"
+grep -q 'runAsUser: 10001' "$operator_render"
+grep -q 'readOnlyRootFilesystem: true' "$operator_render"
+if ! grep -q '^                          annotations:$' "$operator_crd" ||
+  ! grep -q '^                          labels:$' "$operator_crd"; then
+  echo "operator CRD does not preserve WorkloadCronJob job template metadata" >&2
+  exit 1
+fi
+if grep -q '^[[:space:]]*description:' "$operator_crd"; then
+  echo "operator CRD was not generated with maxDescLen=0" >&2
+  exit 1
+fi
+if grep -q 'kind: ClusterRole\|kind: Role\|kind: ClusterRoleBinding\|kind: RoleBinding' "$operator_external_rbac_render"; then
+  echo "operator rendered RBAC while rbac.create=false" >&2
+  exit 1
+fi
+grep -q 'serviceAccountName: existing-operator' "$operator_external_rbac_render"
 
 if grep 'checksum/config:' "$default_render" | grep -q 'soha-123456'; then
   echo "config checksum annotation leaked credential plaintext" >&2

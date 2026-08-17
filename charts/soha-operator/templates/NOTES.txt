@@ -1,0 +1,7 @@
+Soha Operator is running in namespace {{ .Release.Namespace }}.
+
+Check the controller:
+  kubectl get deployment {{ include "soha-operator.fullname" . }} -n {{ .Release.Namespace }}
+
+List WorkloadCronJobs:
+  kubectl get workloadcronjobs -A

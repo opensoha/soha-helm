@@ -77,6 +77,20 @@ jobs:
           fi
           git commit -m "chore: sync helm repo metadata"
           git push origin HEAD:gh-pages
+      - name: Login to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify Operator image
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          version="$(helm show chart charts/soha-operator | awk '$1 == "appVersion:" { gsub(/"/, "", $2); print $2 }')"
+          test -n "${version}"
+          docker manifest inspect "ghcr.io/opensoha/soha-operator:${version}" >/dev/null
       - name: Release Helm charts
         if: github.event_name != 'pull_request'
         uses: helm/chart-releaser-action@v1.7.0
@@ -86,13 +100,6 @@ jobs:
           mark_as_latest: false
         env:
           CR_TOKEN: ${{ github.token }}
-      - name: Login to GHCR
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish Helm charts as OCI artifacts
         if: github.event_name != 'pull_request'
         shell: bash

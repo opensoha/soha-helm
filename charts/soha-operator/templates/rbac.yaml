@@ -1,0 +1,65 @@
+{{- if .Values.rbac.create }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "soha-operator.fullname" . }}-manager
+  labels:
+    {{- include "soha-operator.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [workloads.soha.io]
+    resources: [workloadcronjobs]
+    verbs: [get, list, watch]
+  - apiGroups: [workloads.soha.io]
+    resources: [workloadcronjobs/status]
+    verbs: [get, update, patch]
+  - apiGroups: [apps]
+    resources: [deployments, statefulsets, daemonsets]
+    verbs: [get, list, watch]
+  - apiGroups: [batch]
+    resources: [cronjobs]
+    verbs: [get, list, watch, create, update]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "soha-operator.fullname" . }}-manager
+  labels:
+    {{- include "soha-operator.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "soha-operator.fullname" . }}-manager
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "soha-operator.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "soha-operator.fullname" . }}-leader-election
+  labels:
+    {{- include "soha-operator.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [coordination.k8s.io]
+    resources: [leases]
+    verbs: [get, list, watch, create, update, patch]
+  - apiGroups: [""]
+    resources: [events]
+    verbs: [create, patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "soha-operator.fullname" . }}-leader-election
+  labels:
+    {{- include "soha-operator.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "soha-operator.fullname" . }}-leader-election
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "soha-operator.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}

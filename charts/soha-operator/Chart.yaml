@@ -1,0 +1,24 @@
+apiVersion: v2
+name: soha-operator
+description: Optional OpenSoha Kubernetes operator for WorkloadCronJob and cluster-local automation.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://github.com/opensoha/soha-operator
+sources:
+  - https://github.com/opensoha/soha-operator
+  - https://github.com/opensoha/soha-helm
+maintainers:
+  - name: OpenSoha
+    url: https://github.com/opensoha
+keywords:
+  - opensoha
+  - operator
+  - kubernetes
+  - cronjob
+annotations:
+  artifacthub.io/category: integration-delivery
+  artifacthub.io/license: Apache-2.0
+  artifacthub.io/changes: |
+    - kind: added
+      description: Add the WorkloadCronJob CRD and controller with selected container runtime input synchronization.

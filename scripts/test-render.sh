@@ -11,6 +11,8 @@ restart_render="$tmp_dir/restart.yaml"
 replica_render="$tmp_dir/replica.yaml"
 logger_render="$tmp_dir/logger.yaml"
 external_postgres_render="$tmp_dir/external-postgres.yaml"
+persistence_disabled_render="$tmp_dir/persistence-disabled.yaml"
+persistence_existing_render="$tmp_dir/persistence-existing.yaml"
 agent_render="$tmp_dir/agent.yaml"
 standalone_agent_render="$tmp_dir/standalone-agent.yaml"
 outpost_render="$tmp_dir/outpost.yaml"
@@ -35,6 +37,10 @@ helm template soha "$root_dir/charts/soha" \
   --set postgres.enabled=false \
   --set postgres.port=15432 \
   --set-string postgres.host=postgres.example.com >"$external_postgres_render"
+helm template soha "$root_dir/charts/soha" \
+  --set persistence.enabled=false >"$persistence_disabled_render"
+helm template soha "$root_dir/charts/soha" \
+  --set-string persistence.existingClaim=existing-soha-data >"$persistence_existing_render"
 helm template soha-agent "$root_dir/charts/soha-agent" >"$agent_render"
 helm template soha-agent "$root_dir/charts/soha-agent" \
   --set config.controlPlane.enabled=false >"$standalone_agent_render"
@@ -124,6 +130,20 @@ grep -q 'replicas: 2' "$replica_render"
 grep -q 'name: wait-for-postgres' "$default_render"
 grep -q -- '--host=soha-postgres' "$default_render"
 grep -q -- '--port=5432' "$default_render"
+grep -q 'image: "ghcr.io/opensoha/soha:v0.1.7"' "$default_render"
+grep -q '^  name: soha-data$' "$default_render"
+grep -q 'helm.sh/resource-policy: keep' "$default_render"
+grep -q 'mountPath: /app/data' "$default_render"
+grep -q 'claimName: soha-data' "$default_render"
+if grep -q 'mountPath: /app/data' "$persistence_disabled_render" || grep -q '^  name: soha-data$' "$persistence_disabled_render"; then
+  echo "disabled application persistence still rendered a volume" >&2
+  exit 1
+fi
+grep -q 'claimName: existing-soha-data' "$persistence_existing_render"
+if grep -q '^  name: soha-data$' "$persistence_existing_render"; then
+  echo "existing application claim still rendered a new PVC" >&2
+  exit 1
+fi
 if grep -q 'name: wait-for-postgres' "$external_postgres_render"; then
   echo "external PostgreSQL mode rendered the bundled database wait container" >&2
   exit 1

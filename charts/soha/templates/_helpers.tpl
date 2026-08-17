@@ -34,6 +34,10 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
 {{- end -}}
 
+{{- define "soha.persistenceClaimName" -}}
+{{- default (printf "%s-data" (include "soha.fullname" .)) .Values.persistence.existingClaim -}}
+{{- end -}}
+
 {{- define "soha.image" -}}
 {{- $tag := default .Chart.AppVersion .Values.image.tag -}}
 {{- printf "%s:%s" .Values.image.repository $tag -}}

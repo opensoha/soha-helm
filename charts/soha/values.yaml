@@ -1,12 +1,20 @@
 image:
   repository: ghcr.io/opensoha/soha
-  tag: v0.1.6
+  tag: v0.1.7
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 replicaCount: 1
+
+persistence:
+  enabled: true
+  existingClaim: ""
+  storageClass: ""
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
 
 service:
   type: ClusterIP

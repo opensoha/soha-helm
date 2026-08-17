@@ -64,7 +64,16 @@ spec:
               mountPath: /app/configs/config.yaml
               subPath: config.yaml
               readOnly: true
+            {{- if .Values.persistence.enabled }}
+            - name: app-data
+              mountPath: /app/data
+            {{- end }}
       volumes:
         - name: app-config
           secret:
             secretName: {{ include "soha.fullname" . }}-config
+        {{- if .Values.persistence.enabled }}
+        - name: app-data
+          persistentVolumeClaim:
+            claimName: {{ include "soha.persistenceClaimName" . }}
+        {{- end }}

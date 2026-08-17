@@ -18,6 +18,13 @@ When the bundled PostgreSQL deployment is enabled, the Soha Pod waits for the
 database to accept connections before starting the control-plane container.
 External PostgreSQL deployments remain the operator's responsibility.
 
+## Application data
+
+The chart mounts a persistent volume at `/app/data` for uploaded software
+packages and companion data. Set `persistence.storageClass` and
+`persistence.size` for a new claim, or set `persistence.existingClaim` to reuse
+one. The chart keeps claims when a release is uninstalled.
+
 ## Configuration ownership
 
 Values below `config` are the deployment baseline written to the control-plane

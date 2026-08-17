@@ -2,8 +2,8 @@ apiVersion: v2
 name: soha
 description: OpenSoha control plane with embedded web console and optional PostgreSQL.
 type: application
-version: 0.1.7
-appVersion: "0.1.6"
+version: 0.1.8
+appVersion: "0.1.7"
 home: https://github.com/opensoha/soha
 sources:
   - https://github.com/opensoha/soha
@@ -25,5 +25,5 @@ annotations:
     - name: docs
       url: https://docs.opensoha.dev/
   artifacthub.io/changes: |
-    - kind: changed
-      description: Run the Soha v0.1.6 control plane with workload snapshot generation and hardened runtime behavior.
+    - kind: fixed
+      description: Persist software package and companion data on a writable volume with Soha v0.1.7.

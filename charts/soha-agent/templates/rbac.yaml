@@ -18,6 +18,11 @@ rules:
   - apiGroups: [""]
     resources: ["configmaps", "endpoints", "events", "limitranges", "namespaces", "nodes", "persistentvolumeclaims", "persistentvolumes", "pods", "pods/log", "resourcequotas", "secrets", "serviceaccounts", "services"]
     verbs: ["get", "list", "watch"]
+  {{- if has "platform.pods.exec" .Values.config.security.allowedActions }}
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+  {{- end }}
   - apiGroups: ["apps"]
     resources: ["daemonsets", "deployments", "deployments/scale", "replicasets", "statefulsets"]
     verbs: ["get", "list", "watch"]

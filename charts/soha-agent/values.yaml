@@ -81,6 +81,7 @@ config:
       owner: platform
   security:
     allowedActions:
+      - platform.pods.exec
       - platform.deployments.restart
       - platform.deployments.scale
       - platform.deployments.image

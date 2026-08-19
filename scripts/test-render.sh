@@ -14,6 +14,7 @@ external_postgres_render="$tmp_dir/external-postgres.yaml"
 persistence_disabled_render="$tmp_dir/persistence-disabled.yaml"
 persistence_existing_render="$tmp_dir/persistence-existing.yaml"
 agent_render="$tmp_dir/agent.yaml"
+agent_without_terminal_render="$tmp_dir/agent-without-terminal.yaml"
 standalone_agent_render="$tmp_dir/standalone-agent.yaml"
 outpost_render="$tmp_dir/outpost.yaml"
 observability_render="$tmp_dir/observability.yaml"
@@ -42,6 +43,8 @@ helm template soha "$root_dir/charts/soha" \
 helm template soha "$root_dir/charts/soha" \
   --set-string persistence.existingClaim=existing-soha-data >"$persistence_existing_render"
 helm template soha-agent "$root_dir/charts/soha-agent" >"$agent_render"
+helm template soha-agent "$root_dir/charts/soha-agent" \
+  --set 'config.security.allowedActions={platform.deployments.restart}' >"$agent_without_terminal_render"
 helm template soha-agent "$root_dir/charts/soha-agent" \
   --set config.controlPlane.enabled=false >"$standalone_agent_render"
 helm template soha-outpost "$root_dir/charts/soha-agent" \
@@ -157,6 +160,16 @@ if grep -q 'kind: ClusterRole' "$outpost_render" || grep -q 'kind: PersistentVol
   exit 1
 fi
 grep -q 'kind: ClusterRole' "$agent_render"
+grep -q -- '- "platform.pods.exec"' "$agent_render"
+grep -A2 'resources: \["pods/exec"\]' "$agent_render" | grep -q 'verbs: \["create"\]'
+if grep -q 'pods/exec\|platform.pods.exec' "$agent_without_terminal_render"; then
+  echo "agent terminal RBAC rendered without the platform.pods.exec action" >&2
+  exit 1
+fi
+if grep -q 'pods/exec\|platform.pods.exec' "$outpost_render"; then
+  echo "outpost mode rendered Pod terminal access" >&2
+  exit 1
+fi
 for resource in serviceaccounts endpointslices storageclasses priorityclasses runtimeclasses mutatingwebhookconfigurations gatewayclasses; do
   grep -q "$resource" "$agent_render"
 done

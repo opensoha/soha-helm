@@ -17,6 +17,10 @@ helm install soha-agent opensoha/soha-agent \
   --set-string secrets.controlPlaneBearerToken="$SOHA_EXECUTION_RUNNER_TOKEN"
 ```
 
+## Pod terminal access
+
+Agent mode enables `platform.pods.exec` by default and grants the Agent ServiceAccount `create` on `pods/exec`. Removing `platform.pods.exec` from `config.security.allowedActions` also removes that RBAC rule from the rendered chart. Identity Outpost mode never renders Kubernetes RBAC.
+
 ## Identity Outpost mode
 
 The same chart can run the lightweight Proxy forward-auth runtime without Kubernetes API RBAC or persistent state. Use an agent image release that advertises Identity Outpost protocol `v1` and pin the control-plane signing public key:

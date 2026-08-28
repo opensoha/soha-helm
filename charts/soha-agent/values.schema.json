@@ -29,6 +29,14 @@
     "config": {
       "type": "object",
       "properties": {
+        "loggerLevel": {
+          "type": "string",
+          "enum": ["debug", "info", "warn", "error"]
+        },
+        "loggerFormat": {
+          "type": "string",
+          "enum": ["json", "console"]
+        },
         "controlPlane": {
           "type": "object",
           "properties": {

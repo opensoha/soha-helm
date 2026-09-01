@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
-  <title id="title">Soha</title>
-  <desc id="desc">Soha logo</desc>
-  <rect width="64" height="64" rx="14" fill="#111827" />
-  <path d="M19 23.5c0-4.7 3.8-8.5 8.5-8.5h17.8l-6 8.5H27.6a2.5 2.5 0 0 0 0 5h8.8a10.5 10.5 0 0 1 0 21H18.7l6-8.5h11.7a2 2 0 1 0 0-4h-8.8C22.8 37 19 33.2 19 28.5z" fill="#f8fafc" />
-  <path d="M43 14h10L39.7 33H29.5z" fill="#60a5fa" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-labelledby="title desc">
+  <title id="title">OpenSoha primary mark</title>
+  <desc id="desc">OpenSoha geometric mark in the product primary blue.</desc>
+  <g fill="#1677ff">
+    <path d="M56 104 200 20l144 84-86 53v45l-34-21v-43l61-37-85-49-85 49 61 37v116l-60 37 91 56-33 19-110-75 78-49v-83l-48-29v90l-38 24ZM344 145v134l-38-24v-87ZM279 230l65 40v24l-144 90-26-18 120-76-53-32ZM200 192l26 26-26 26-26-26Z"/>
+  </g>
 </svg>

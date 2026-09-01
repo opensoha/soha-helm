@@ -14,6 +14,40 @@ entries:
           url: https://docs.opensoha.dev/
     apiVersion: v2
     appVersion: 0.1.7
+    created: "2026-09-01T03:39:26.499180192Z"
+    description: OpenSoha control plane with embedded web console and optional PostgreSQL.
+    digest: 5ab7ec99735e944d54a54e2f043120f7d38e5788f3ffad692d9504286282bfc4
+    home: https://github.com/opensoha/soha
+    icon: https://opensoha.github.io/soha-helm/logo.svg
+    keywords:
+    - opensoha
+    - soha
+    - ai-gateway
+    - delivery
+    - kubernetes
+    maintainers:
+    - name: OpenSoha
+      url: https://github.com/opensoha
+    name: soha
+    sources:
+    - https://github.com/opensoha/soha
+    type: application
+    urls:
+    - https://github.com/opensoha/soha-helm/releases/download/soha-0.1.9/soha-0.1.9.tgz
+    version: 0.1.9
+  - annotations:
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/changes: |
+        - kind: fixed
+          description: Persist software package and companion data on a writable volume with Soha v0.1.7.
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: source
+          url: https://github.com/opensoha/soha
+        - name: docs
+          url: https://docs.opensoha.dev/
+    apiVersion: v2
+    appVersion: 0.1.7
     created: "2026-08-17T08:27:17.57582861Z"
     description: OpenSoha control plane with embedded web console and optional PostgreSQL.
     digest: 8d35d77fd617c9517d3668e881292bf9ef53dad2a0c3962f223a58949a8c62fe
@@ -285,6 +319,37 @@ entries:
           url: https://github.com/opensoha/soha-agent
     apiVersion: v2
     appVersion: 0.1.6
+    created: "2026-09-01T03:39:26.632829429Z"
+    description: OpenSoha cluster agent for remote Kubernetes operations.
+    digest: f75964094123f23603e63fa0fa795ca144372bf70e4600303088cee424732514
+    home: https://github.com/opensoha/soha-agent
+    icon: https://opensoha.github.io/soha-helm/logo.svg
+    keywords:
+    - opensoha
+    - soha-agent
+    - kubernetes
+    - delivery
+    maintainers:
+    - name: OpenSoha
+      url: https://github.com/opensoha
+    name: soha-agent
+    sources:
+    - https://github.com/opensoha/soha-agent
+    type: application
+    urls:
+    - https://github.com/opensoha/soha-helm/releases/download/soha-agent-0.2.3/soha-agent-0.2.3.tgz
+    version: 0.2.3
+  - annotations:
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/changes: |
+        - kind: changed
+          description: Run the soha-agent v0.1.6 release with Docker-only runtime isolation.
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: source
+          url: https://github.com/opensoha/soha-agent
+    apiVersion: v2
+    appVersion: 0.1.6
     created: "2026-08-17T07:26:28.373156739Z"
     description: OpenSoha cluster agent for remote Kubernetes operations.
     digest: 7accf15e4bffcecd9d2fb4445281cc7752835453425c0c00ab6d5a7ecf99ec8e
@@ -462,6 +527,37 @@ entries:
           url: https://github.com/opensoha/soha-agent
     apiVersion: v2
     appVersion: 0.1.6
+    created: "2026-09-01T03:39:26.901723173Z"
+    description: OpenSoha Hermes Agent Runtime runner.
+    digest: 4e6c029cecb17393dedf6c8fde12b58006460e735249444025f37fee6a04d133
+    home: https://github.com/opensoha/soha-agent
+    icon: https://opensoha.github.io/soha-helm/logo.svg
+    keywords:
+    - opensoha
+    - soha-hermes-agent
+    - hermes
+    - ai-runtime
+    maintainers:
+    - name: OpenSoha
+      url: https://github.com/opensoha
+    name: soha-hermes-agent
+    sources:
+    - https://github.com/opensoha/soha-agent
+    type: application
+    urls:
+    - https://github.com/opensoha/soha-helm/releases/download/soha-hermes-agent-0.1.6/soha-hermes-agent-0.1.6.tgz
+    version: 0.1.6
+  - annotations:
+      artifacthub.io/category: ai-machine-learning
+      artifacthub.io/changes: |
+        - kind: changed
+          description: Run the Hermes runner from the soha-agent v0.1.6 release.
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: source
+          url: https://github.com/opensoha/soha-agent
+    apiVersion: v2
+    appVersion: 0.1.6
     created: "2026-08-17T07:26:28.494226648Z"
     description: OpenSoha Hermes Agent Runtime runner.
     digest: 1da995d0660ac81c9548b42c5c364b2ad7e2760ee9582d9ea1137b6357dd53c5
@@ -604,6 +700,38 @@ entries:
       artifacthub.io/license: Apache-2.0
     apiVersion: v2
     appVersion: 0.157.0
+    created: "2026-09-01T03:39:27.026053172Z"
+    description: Optional OpenSoha telemetry collection with OpenTelemetry Collector
+      and Loki.
+    digest: 08965e2afa90a5983f645a1d8aad10ea3df4cb2724561fc9736442e5bd149909
+    home: https://github.com/opensoha/soha-helm
+    icon: https://opensoha.github.io/soha-helm/logo.svg
+    keywords:
+    - opensoha
+    - observability
+    - logs
+    - metrics
+    - traces
+    - opentelemetry
+    - loki
+    maintainers:
+    - name: OpenSoha
+      url: https://github.com/opensoha
+    name: soha-observability
+    sources:
+    - https://github.com/opensoha/soha-helm
+    type: application
+    urls:
+    - https://github.com/opensoha/soha-helm/releases/download/soha-observability-0.2.1/soha-observability-0.2.1.tgz
+    version: 0.2.1
+  - annotations:
+      artifacthub.io/category: monitoring-logging
+      artifacthub.io/changes: |
+        - kind: added
+          description: Add authenticated OTLP ingestion and external metrics and trace pipelines while preserving the logs-only default.
+      artifacthub.io/license: Apache-2.0
+    apiVersion: v2
+    appVersion: 0.157.0
     created: "2026-08-17T06:42:45.579774407Z"
     description: Optional OpenSoha telemetry collection with OpenTelemetry Collector
       and Loki.
@@ -665,6 +793,36 @@ entries:
       artifacthub.io/license: Apache-2.0
     apiVersion: v2
     appVersion: 0.1.0
+    created: "2026-09-01T03:39:27.179001571Z"
+    description: Optional OpenSoha Kubernetes operator for WorkloadCronJob and cluster-local
+      automation.
+    digest: 32db1963f7d83c66a710e16d857f3c0992adbe6f04dbc9cf5f66961ef6025fff
+    home: https://github.com/opensoha/soha-operator
+    icon: https://opensoha.github.io/soha-helm/logo.svg
+    keywords:
+    - opensoha
+    - operator
+    - kubernetes
+    - cronjob
+    maintainers:
+    - name: OpenSoha
+      url: https://github.com/opensoha
+    name: soha-operator
+    sources:
+    - https://github.com/opensoha/soha-operator
+    - https://github.com/opensoha/soha-helm
+    type: application
+    urls:
+    - https://github.com/opensoha/soha-helm/releases/download/soha-operator-0.1.1/soha-operator-0.1.1.tgz
+    version: 0.1.1
+  - annotations:
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/changes: |
+        - kind: added
+          description: Add the WorkloadCronJob CRD and controller with selected container runtime input synchronization.
+      artifacthub.io/license: Apache-2.0
+    apiVersion: v2
+    appVersion: 0.1.0
     created: "2026-08-17T06:42:45.81041018Z"
     description: Optional OpenSoha Kubernetes operator for WorkloadCronJob and cluster-local
       automation.
@@ -686,4 +844,4 @@ entries:
     urls:
     - https://github.com/opensoha/soha-helm/releases/download/soha-operator-0.1.0/soha-operator-0.1.0.tgz
     version: 0.1.0
-generated: "2026-08-17T08:27:17.575878744Z"
+generated: "2026-09-01T03:39:27.179106848Z"

@@ -2,9 +2,10 @@ apiVersion: v2
 name: soha-operator
 description: Optional OpenSoha Kubernetes operator for WorkloadCronJob and cluster-local automation.
 type: application
-version: 0.1.0
+version: 0.1.1
 appVersion: "0.1.0"
 home: https://github.com/opensoha/soha-operator
+icon: https://opensoha.github.io/soha-helm/logo.svg
 sources:
   - https://github.com/opensoha/soha-operator
   - https://github.com/opensoha/soha-helm

@@ -2,9 +2,10 @@ apiVersion: v2
 name: soha-hermes-agent
 description: OpenSoha Hermes Agent Runtime runner.
 type: application
-version: 0.1.5
+version: 0.1.6
 appVersion: "0.1.6"
 home: https://github.com/opensoha/soha-agent
+icon: https://opensoha.github.io/soha-helm/logo.svg
 sources:
   - https://github.com/opensoha/soha-agent
 maintainers:

@@ -2,9 +2,10 @@ apiVersion: v2
 name: soha-agent
 description: OpenSoha cluster agent for remote Kubernetes operations.
 type: application
-version: 0.2.2
+version: 0.2.3
 appVersion: "0.1.6"
 home: https://github.com/opensoha/soha-agent
+icon: https://opensoha.github.io/soha-helm/logo.svg
 sources:
   - https://github.com/opensoha/soha-agent
 maintainers:

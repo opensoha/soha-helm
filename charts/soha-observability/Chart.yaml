@@ -2,9 +2,10 @@ apiVersion: v2
 name: soha-observability
 description: Optional OpenSoha telemetry collection with OpenTelemetry Collector and Loki.
 type: application
-version: 0.2.0
+version: 0.2.1
 appVersion: "0.157.0"
 home: https://github.com/opensoha/soha-helm
+icon: https://opensoha.github.io/soha-helm/logo.svg
 sources:
   - https://github.com/opensoha/soha-helm
 maintainers:

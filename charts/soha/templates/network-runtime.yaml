@@ -1,0 +1,339 @@
+{{- if .Values.networkRuntime.enabled }}
+{{- $tag := default .Chart.AppVersion .Values.image.tag }}
+{{- if regexMatch "^v?0\\.1\\.[0-8]$" $tag }}
+{{- fail "networkRuntime requires an image containing /app/network-control and /app/ingest; set image.tag to a tested build (for example local), not a release before v0.1.9" }}
+{{- end }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "soha.ingestPostgresName" . }}-data
+  annotations:
+    helm.sh/resource-policy: keep
+  labels:
+    {{- include "soha.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- with .Values.networkRuntime.ingestPostgres.storageClass }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.networkRuntime.ingestPostgres.storageSize }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "soha.ingestPostgresName" . }}
+  labels:
+    {{- include "soha.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: network-ingest-postgres
+      {{- include "soha.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: network-ingest-postgres
+        {{- include "soha.selectorLabels" . | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: postgres
+          image: {{ .Values.networkRuntime.ingestPostgres.image | quote }}
+          args:
+            - postgres
+            - -c
+            - shared_preload_libraries=pg_stat_statements
+            - -c
+            - compute_query_id=on
+          ports:
+            - containerPort: 5432
+              name: postgres
+          env:
+            - name: POSTGRES_DB
+              value: {{ .Values.networkRuntime.ingestPostgres.database | quote }}
+            - name: POSTGRES_USER
+              value: {{ .Values.networkRuntime.ingestPostgres.username | quote }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "soha.fullname" . }}-config
+                  key: ingest-postgres-password
+          startupProbe:
+            exec:
+              command: [sh, -ec, 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"']
+            periodSeconds: 2
+            timeoutSeconds: 3
+            failureThreshold: 30
+          readinessProbe:
+            exec:
+              command: [sh, -ec, 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"']
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 6
+          livenessProbe:
+            exec:
+              command: [sh, -ec, 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"']
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql
+      volumes:
+        - name: postgres-data
+          persistentVolumeClaim:
+            claimName: {{ include "soha.ingestPostgresName" . }}-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "soha.ingestPostgresName" . }}
+  labels:
+    {{- include "soha.labels" . | nindent 4 }}
+spec:
+  selector:
+    app.kubernetes.io/component: network-ingest-postgres
+    {{- include "soha.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "soha.networkControlName" . }}
+  labels:
+    {{- include "soha.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: network-control
+      {{- include "soha.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include "soha.appConfigChecksum" . | quote }}
+      labels:
+        app.kubernetes.io/component: network-control
+        {{- include "soha.selectorLabels" . | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: network-control
+          image: {{ include "soha.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - /app/network-control
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          env:
+            - name: SOHA_CONFIG_FILE
+              value: /app/configs/config.yaml
+            - name: SOHA_NETWORK_CONTROL_DATABASE_HOST
+              value: {{ include "soha.postgresHost" . | quote }}
+            - name: SOHA_NETWORK_CONTROL_DATABASE_PORT
+              value: {{ .Values.postgres.port | quote }}
+            - name: SOHA_NETWORK_CONTROL_DATABASE_NAME
+              value: {{ .Values.postgres.database | quote }}
+            - name: SOHA_NETWORK_CONTROL_DATABASE_USER
+              value: {{ .Values.postgres.username | quote }}
+            - name: SOHA_NETWORK_CONTROL_DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "soha.fullname" . }}-config
+                  key: postgres-password
+            - name: SOHA_NETWORK_CONTROL_TLS_CERT_FILE
+              value: /run/soha-network-control/tls.crt
+            - name: SOHA_NETWORK_CONTROL_TLS_KEY_FILE
+              value: /run/soha-network-control/tls.key
+            - name: SOHA_NETWORK_CONTROL_TLS_CLIENT_CA_FILE
+              value: /run/soha-network-control/client-ca.crt
+          ports:
+            - containerPort: 8082
+              name: https
+          startupProbe:
+            httpGet:
+              scheme: HTTPS
+              path: /healthz
+              port: https
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              scheme: HTTPS
+              path: /readyz
+              port: https
+          livenessProbe:
+            httpGet:
+              scheme: HTTPS
+              path: /healthz
+              port: https
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: app-config
+              mountPath: /app/configs/config.yaml
+              subPath: config.yaml
+              readOnly: true
+            - name: runtime-tls
+              mountPath: /run/soha-network-control
+              readOnly: true
+      volumes:
+        - name: app-config
+          secret:
+            secretName: {{ include "soha.fullname" . }}-config
+        - name: runtime-tls
+          secret:
+            secretName: {{ .Values.networkRuntime.existingTLSSecret | quote }}
+            defaultMode: 0440
+            items:
+              - key: network-control.crt
+                path: tls.crt
+              - key: network-control.key
+                path: tls.key
+              - key: client-ca.crt
+                path: client-ca.crt
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "soha.networkControlName" . }}
+  labels:
+    {{- include "soha.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.networkRuntime.control.service.type }}
+  selector:
+    app.kubernetes.io/component: network-control
+    {{- include "soha.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: https
+      port: {{ .Values.networkRuntime.control.service.port }}
+      targetPort: https
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "soha.ingestName" . }}
+  labels:
+    {{- include "soha.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: network-ingest
+      {{- include "soha.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include "soha.appConfigChecksum" . | quote }}
+      labels:
+        app.kubernetes.io/component: network-ingest
+        {{- include "soha.selectorLabels" . | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: ingest
+          image: {{ include "soha.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - /app/ingest
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          env:
+            - name: SOHA_CONFIG_FILE
+              value: /app/configs/config.yaml
+            - name: SOHA_INGEST_DATABASE_HOST
+              value: {{ include "soha.ingestPostgresName" . | quote }}
+            - name: SOHA_INGEST_DATABASE_PORT
+              value: "5432"
+            - name: SOHA_INGEST_DATABASE_NAME
+              value: {{ .Values.networkRuntime.ingestPostgres.database | quote }}
+            - name: SOHA_INGEST_DATABASE_USER
+              value: {{ .Values.networkRuntime.ingestPostgres.username | quote }}
+            - name: SOHA_INGEST_DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "soha.fullname" . }}-config
+                  key: ingest-postgres-password
+            - name: SOHA_INGEST_TLS_CERT_FILE
+              value: /run/soha-ingest/tls.crt
+            - name: SOHA_INGEST_TLS_KEY_FILE
+              value: /run/soha-ingest/tls.key
+            - name: SOHA_INGEST_TLS_CLIENT_CA_FILE
+              value: /run/soha-ingest/client-ca.crt
+          ports:
+            - containerPort: 8083
+              name: https
+          startupProbe:
+            httpGet:
+              scheme: HTTPS
+              path: /healthz
+              port: https
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              scheme: HTTPS
+              path: /readyz
+              port: https
+          livenessProbe:
+            httpGet:
+              scheme: HTTPS
+              path: /healthz
+              port: https
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: app-config
+              mountPath: /app/configs/config.yaml
+              subPath: config.yaml
+              readOnly: true
+            - name: runtime-tls
+              mountPath: /run/soha-ingest
+              readOnly: true
+      volumes:
+        - name: app-config
+          secret:
+            secretName: {{ include "soha.fullname" . }}-config
+        - name: runtime-tls
+          secret:
+            secretName: {{ .Values.networkRuntime.existingTLSSecret | quote }}
+            defaultMode: 0440
+            items:
+              - key: ingest.crt
+                path: tls.crt
+              - key: ingest.key
+                path: tls.key
+              - key: client-ca.crt
+                path: client-ca.crt
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "soha.ingestName" . }}
+  labels:
+    {{- include "soha.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.networkRuntime.ingest.service.type }}
+  selector:
+    app.kubernetes.io/component: network-ingest
+    {{- include "soha.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: https
+      port: {{ .Values.networkRuntime.ingest.service.port }}
+      targetPort: https
+{{- end }}

@@ -26,6 +26,18 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- printf "%s-postgres" (include "soha.fullname" .) -}}
 {{- end -}}
 
+{{- define "soha.networkControlName" -}}
+{{- printf "%s-network-control" (include "soha.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{- define "soha.ingestName" -}}
+{{- printf "%s-ingest" (include "soha.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{- define "soha.ingestPostgresName" -}}
+{{- printf "%s-ingest-postgres" (include "soha.fullname" .) | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
 {{- define "soha.postgresHost" -}}
 {{- if .Values.postgres.enabled -}}
 {{- include "soha.postgresServiceName" . -}}
@@ -71,6 +83,16 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- fail "postgres.password is required on first install when postgres.enabled=false" -}}
 {{- end -}}
 {{- include "soha.persistedCredentialValue" (dict "name" "postgres.password" "value" .Values.postgres.password "existing" $existing) -}}
+{{- end -}}
+
+{{- define "soha.ingestPostgresPassword" -}}
+{{- $secretName := printf "%s-config" (include "soha.fullname" .) -}}
+{{- $secret := lookup "v1" "Secret" .Release.Namespace $secretName -}}
+{{- $existing := "" -}}
+{{- if and $secret (hasKey (default dict $secret.data) "ingest-postgres-password") -}}
+{{- $existing = index $secret.data "ingest-postgres-password" | b64dec -}}
+{{- end -}}
+{{- include "soha.persistedCredentialValue" (dict "name" "networkRuntime.ingestPostgres.password" "value" .Values.networkRuntime.ingestPostgres.password "existing" $existing) -}}
 {{- end -}}
 
 {{- define "soha.adminPassword" -}}
@@ -157,6 +179,16 @@ auth:
 monitoring:
   enabled: {{ .Values.config.monitoring.enabled }}
   webhook_token: {{ .Values.config.monitoring.webhookToken | quote }}
+{{- if .Values.config.networkIngestQuery.enabled }}
+network_ingest_query:
+  url: {{ .Values.config.networkIngestQuery.url | quote }}
+  ca_file: /run/soha-network-ingest-query/ca.crt
+  cert_file: /run/soha-network-ingest-query/tls.crt
+  key_file: /run/soha-network-ingest-query/tls.key
+  server_name: {{ .Values.config.networkIngestQuery.serverName | quote }}
+  timeout: {{ .Values.config.networkIngestQuery.timeout | quote }}
+  max_response_bytes: {{ int .Values.config.networkIngestQuery.maxResponseBytes }}
+{{- end }}
 swagger:
   enabled: {{ .Values.config.swaggerEnabled }}
   path: /swagger/*any

@@ -73,6 +73,49 @@
         }
       }
     },
+    "networkRuntime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "existingTLSSecret", "control", "ingest", "ingestPostgres"],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "existingTLSSecret": {
+          "type": "string",
+          "maxLength": 253
+        },
+        "control": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["service"],
+          "properties": {
+            "service": { "$ref": "#/definitions/networkRuntimeService" }
+          }
+        },
+        "ingest": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["service"],
+          "properties": {
+            "service": { "$ref": "#/definitions/networkRuntimeService" }
+          }
+        },
+        "ingestPostgres": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["image", "database", "username", "password", "storageClass", "storageSize"],
+          "properties": {
+            "image": { "type": "string", "minLength": 1 },
+            "database": { "type": "string", "minLength": 1 },
+            "username": { "type": "string", "minLength": 1 },
+            "password": { "$ref": "#/definitions/initialCredential" },
+            "storageClass": { "type": "string" },
+            "storageSize": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
     "config": {
       "type": "object",
       "properties": {
@@ -116,6 +159,44 @@
             },
             "webhookToken": {
               "$ref": "#/definitions/systemSecret"
+            }
+          }
+        },
+        "networkIngestQuery": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled",
+            "url",
+            "serverName",
+            "existingSecret",
+            "timeout",
+            "maxResponseBytes"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "url": {
+              "type": "string",
+              "maxLength": 2048
+            },
+            "serverName": {
+              "type": "string",
+              "maxLength": 253
+            },
+            "existingSecret": {
+              "type": "string",
+              "maxLength": 253
+            },
+            "timeout": {
+              "type": "string",
+              "minLength": 1
+            },
+            "maxResponseBytes": {
+              "type": "integer",
+              "minimum": 1024,
+              "maximum": 4194304
             }
           }
         },
@@ -227,9 +308,91 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "config": {
+            "properties": {
+              "networkIngestQuery": {
+                "properties": {
+                  "enabled": {
+                    "const": true
+                  }
+                },
+                "required": ["enabled"]
+              }
+            },
+            "required": ["networkIngestQuery"]
+          }
+        },
+        "required": ["config"]
+      },
+      "then": {
+        "properties": {
+          "config": {
+            "properties": {
+              "networkIngestQuery": {
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "pattern": "^https://[^\\s]+$"
+                  },
+                  "serverName": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "existingSecret": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "networkRuntime": {
+            "properties": {
+              "enabled": { "const": true }
+            },
+            "required": ["enabled"]
+          }
+        },
+        "required": ["networkRuntime"]
+      },
+      "then": {
+        "properties": {
+          "networkRuntime": {
+            "properties": {
+              "existingTLSSecret": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
     }
   ],
   "definitions": {
+    "networkRuntimeService": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "port"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["ClusterIP", "NodePort", "LoadBalancer"]
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        }
+      }
+    },
     "moduleToggle": {
       "type": "object",
       "properties": {

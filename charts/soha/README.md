@@ -39,6 +39,55 @@ change `config.security.credentialEncryptionKey` until every stored credential
 has been migrated to the replacement key and verified as decryptable. Changing
 the Helm value first makes ciphertext written with the previous key unreadable.
 
+## Network ingest summaries
+
+High-frequency network telemetry remains in a separate `soha-ingest` process
+and database. The chart can run the unprivileged control and ingest plane by
+mounting an externally issued mTLS Secret:
+
+```yaml
+image:
+  # Build and load this image before installation.
+  tag: local
+networkRuntime:
+  enabled: true
+  existingTLSSecret: soha-network-runtime-tls
+```
+
+The Secret must contain `network-control.crt`, `network-control.key`,
+`ingest.crt`, `ingest.key`, and `client-ca.crt`. The chart then creates
+`network-control`, `ingest`, and an isolated ingest PostgreSQL workload; none of
+them shares a Pod with the Soha control plane or forwards user traffic.
+
+Build and load `ghcr.io/opensoha/soha:local` from the current core checkout
+before installing, or set `image.repository` and `image.tag` to your tested
+registry build. The image must contain `/app/soha`, `/app/network-control`,
+and `/app/ingest`. Enabling the runtime with the chart's old default image
+is rejected; releases through v0.1.8 do not contain those runtime binaries.
+
+To let the control plane query bounded aggregate summaries, create a separate
+client Secret containing `ca.crt`, `tls.crt`, and `tls.key`, then configure:
+
+```yaml
+config:
+  networkIngestQuery:
+    enabled: true
+    url: https://soha-ingest.soha.svc:8083
+    serverName: soha-ingest.soha.svc
+    existingSecret: soha-core-ingest-query-tls
+    timeout: 5s
+    maxResponseBytes: 1048576
+```
+
+The client certificate must use the exact URI SAN
+`spiffe://opensoha.local/network-ingest/core/soha-server`. Issue it separately
+from gateway and endpoint identities. The chart mounts both Secrets read-only.
+
+The privileged WireGuard gateway and FreeRADIUS/NAS adapter are intentionally
+not installed by this Chart. Deploy them from the version-matched raw manifests
+after reviewing host networking, `NET_ADMIN`, UDP exposure, certificate, and
+RADIUS shared-secret requirements.
+
 ## Prometheus and Grafana migration
 
 The chart no longer accepts the legacy `config.monitoring.prometheusUrl`,

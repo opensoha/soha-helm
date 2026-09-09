@@ -64,6 +64,11 @@ spec:
               mountPath: /app/configs/config.yaml
               subPath: config.yaml
               readOnly: true
+            {{- if .Values.config.networkIngestQuery.enabled }}
+            - name: network-ingest-query-tls
+              mountPath: /run/soha-network-ingest-query
+              readOnly: true
+            {{- end }}
             {{- if .Values.persistence.enabled }}
             - name: app-data
               mountPath: /app/data
@@ -72,6 +77,19 @@ spec:
         - name: app-config
           secret:
             secretName: {{ include "soha.fullname" . }}-config
+        {{- if .Values.config.networkIngestQuery.enabled }}
+        - name: network-ingest-query-tls
+          secret:
+            secretName: {{ .Values.config.networkIngestQuery.existingSecret | quote }}
+            defaultMode: 0440
+            items:
+              - key: ca.crt
+                path: ca.crt
+              - key: tls.crt
+                path: tls.crt
+              - key: tls.key
+                path: tls.key
+        {{- end }}
         {{- if .Values.persistence.enabled }}
         - name: app-data
           persistentVolumeClaim:

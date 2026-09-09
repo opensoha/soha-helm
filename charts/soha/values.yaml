@@ -41,6 +41,29 @@ postgres:
   password: pgsql
   storageSize: 10Gi
 
+networkRuntime:
+  # Runs network-control and high-frequency ingest outside the core Pod.
+  enabled: false
+  # Existing Secret keys: network-control.crt, network-control.key,
+  # ingest.crt, ingest.key, and client-ca.crt.
+  existingTLSSecret: ""
+  control:
+    service:
+      type: LoadBalancer
+      port: 8082
+  ingest:
+    service:
+      type: LoadBalancer
+      port: 8083
+  ingestPostgres:
+    image: pgvector/pgvector:0.8.5-pg18-trixie
+    database: soha_ingest
+    username: pgsql
+    # Standard initial credential. Existing live Secret values win on upgrades.
+    password: pgsql
+    storageClass: ""
+    storageSize: 10Gi
+
 config:
   # These values are rendered into the control-plane config.yaml. Changing the
   # rendered file with helm upgrade rolls the control-plane Pods.
@@ -77,6 +100,13 @@ config:
     enabled: true
     # Public project default. Override before exposing a deployment.
     webhookToken: soha-123456789012345678901234567890
+  networkIngestQuery:
+    enabled: false
+    url: ""
+    serverName: ""
+    existingSecret: ""
+    timeout: 5s
+    maxResponseBytes: 1048576
   modules:
     # Module and feature values are startup configuration for the packaged image.
     delivery:

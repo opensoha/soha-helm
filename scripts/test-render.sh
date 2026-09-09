@@ -10,6 +10,8 @@ feature_render="$tmp_dir/feature.yaml"
 restart_render="$tmp_dir/restart.yaml"
 replica_render="$tmp_dir/replica.yaml"
 logger_render="$tmp_dir/logger.yaml"
+network_ingest_query_render="$tmp_dir/network-ingest-query.yaml"
+network_runtime_render="$tmp_dir/network-runtime.yaml"
 external_postgres_render="$tmp_dir/external-postgres.yaml"
 persistence_disabled_render="$tmp_dir/persistence-disabled.yaml"
 persistence_existing_render="$tmp_dir/persistence-existing.yaml"
@@ -34,6 +36,17 @@ helm template soha "$root_dir/charts/soha" \
   --set replicaCount=2 >"$replica_render"
 helm template soha "$root_dir/charts/soha" \
   --set-string config.loggerLevel=debug >"$logger_render"
+helm template soha "$root_dir/charts/soha" \
+  --set config.networkIngestQuery.enabled=true \
+  --set-string config.networkIngestQuery.url=https://soha-ingest.soha.svc:8083 \
+  --set-string config.networkIngestQuery.serverName=soha-ingest.soha.svc \
+  --set-string config.networkIngestQuery.existingSecret=soha-core-ingest-query-tls \
+  >"$network_ingest_query_render"
+helm template soha "$root_dir/charts/soha" \
+  --set networkRuntime.enabled=true \
+  --set-string image.tag=local \
+  --set-string networkRuntime.existingTLSSecret=soha-network-runtime-tls \
+  >"$network_runtime_render"
 helm template soha "$root_dir/charts/soha" \
   --set postgres.enabled=false \
   --set postgres.port=15432 \
@@ -91,6 +104,7 @@ feature_checksum=$(checksum "$feature_render")
 restart_checksum=$(checksum "$restart_render")
 replica_checksum=$(checksum "$replica_render")
 logger_checksum=$(checksum "$logger_render")
+network_ingest_query_checksum=$(checksum "$network_ingest_query_render")
 
 case "$default_checksum" in
   [0-9a-f][0-9a-f]*) ;;
@@ -127,6 +141,10 @@ rendered_checksum=$(printf '%s' "$rendered_config" | shasum -a 256 | awk '{print
   echo "rendered config change did not update config checksum" >&2
   exit 1
 }
+[ "$default_checksum" != "$network_ingest_query_checksum" ] || {
+  echo "network ingest query change did not update config checksum" >&2
+  exit 1
+}
 
 grep -q 'assistant.global: false' "$feature_render"
 grep -q 'replicas: 2' "$replica_render"
@@ -143,6 +161,34 @@ if grep -q 'mountPath: /app/data' "$persistence_disabled_render" || grep -q '^  
   exit 1
 fi
 grep -q 'claimName: existing-soha-data' "$persistence_existing_render"
+if grep -q 'network_ingest_query:\|network-ingest-query-tls' "$default_render"; then
+  echo "disabled network ingest query still rendered configuration or TLS volume" >&2
+  exit 1
+fi
+if grep -q 'name: soha-network-control\|name: soha-ingest-postgres' "$default_render"; then
+  echo "disabled network runtime still rendered workloads" >&2
+  exit 1
+fi
+grep -q '^    network_ingest_query:$' "$network_ingest_query_render"
+grep -q 'url: "https://soha-ingest.soha.svc:8083"' "$network_ingest_query_render"
+grep -q 'server_name: "soha-ingest.soha.svc"' "$network_ingest_query_render"
+grep -q 'mountPath: /run/soha-network-ingest-query' "$network_ingest_query_render"
+grep -q 'secretName: "soha-core-ingest-query-tls"' "$network_ingest_query_render"
+grep -A18 'name: network-ingest-query-tls' "$network_ingest_query_render" | grep -q 'key: tls.key'
+grep -q '^  name: soha-network-control$' "$network_runtime_render"
+grep -q '^  name: soha-ingest$' "$network_runtime_render"
+grep -q '^  name: soha-ingest-postgres$' "$network_runtime_render"
+grep -q -- '- /app/network-control' "$network_runtime_render"
+grep -q -- '- /app/ingest' "$network_runtime_render"
+grep -A3 'name: SOHA_NETWORK_CONTROL_DATABASE_HOST' "$network_runtime_render" | grep -q 'value: "soha-postgres"'
+grep -A3 'name: SOHA_INGEST_DATABASE_HOST' "$network_runtime_render" | grep -q 'value: "soha-ingest-postgres"'
+grep -q 'key: ingest-postgres-password' "$network_runtime_render"
+grep -q 'secretName: "soha-network-runtime-tls"' "$network_runtime_render"
+grep -q 'key: network-control.crt' "$network_runtime_render"
+grep -q 'key: ingest.crt' "$network_runtime_render"
+grep -q 'automountServiceAccountToken: false' "$network_runtime_render"
+grep -q 'helm.sh/resource-policy: keep' "$network_runtime_render"
+grep -q 'type: Recreate' "$network_runtime_render"
 if grep -q '^  name: soha-data$' "$persistence_existing_render"; then
   echo "existing application claim still rendered a new PVC" >&2
   exit 1
@@ -274,6 +320,43 @@ if helm template soha "$root_dir/charts/soha" \
   --set postgres.port=15432 \
   >"$tmp_dir/invalid-bundled-postgres-port.yaml" 2>/dev/null; then
   echo "bundled PostgreSQL accepted a port other than 5432" >&2
+  exit 1
+fi
+
+if helm template soha "$root_dir/charts/soha" \
+  --set config.networkIngestQuery.enabled=true \
+  >"$tmp_dir/invalid-network-ingest-query.yaml" 2>/dev/null; then
+  echo "network ingest query accepted missing endpoint, server name, or TLS Secret" >&2
+  exit 1
+fi
+
+if helm template soha "$root_dir/charts/soha" \
+  --set networkRuntime.enabled=true \
+  --set-string image.tag=local \
+  >"$tmp_dir/invalid-network-runtime.yaml" 2>/dev/null; then
+  echo "network runtime accepted a missing mTLS Secret" >&2
+  exit 1
+fi
+
+for old_runtime_tag in v0.1.7 v0.1.8; do
+  if helm template soha "$root_dir/charts/soha" \
+    --set networkRuntime.enabled=true \
+    --set-string image.tag="$old_runtime_tag" \
+    --set-string networkRuntime.existingTLSSecret=soha-network-runtime-tls \
+    >"$tmp_dir/invalid-network-image.yaml" 2>"$tmp_dir/invalid-network-image.err"; then
+    echo "network runtime accepted an image without runtime binaries" >&2
+    exit 1
+  fi
+  grep -q 'networkRuntime requires an image' "$tmp_dir/invalid-network-image.err"
+done
+
+if helm template soha "$root_dir/charts/soha" \
+  --set config.networkIngestQuery.enabled=true \
+  --set-string config.networkIngestQuery.url=http://soha-ingest:8083 \
+  --set-string config.networkIngestQuery.serverName=soha-ingest \
+  --set-string config.networkIngestQuery.existingSecret=soha-core-ingest-query-tls \
+  >"$tmp_dir/invalid-network-ingest-query-url.yaml" 2>/dev/null; then
+  echo "network ingest query accepted a non-HTTPS endpoint" >&2
   exit 1
 fi
 

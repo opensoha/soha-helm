@@ -1,10 +1,6 @@
 ---
 name: soha-helm
-description: >-
-  Implement or review OpenSoha Helm charts, values, JSON schemas, templates,
-  render tests, chart metadata, repository index packaging, and Artifact Hub
-  metadata. Use when changing the `soha`, `soha-agent`, or
-  `soha-hermes-agent` installation and release behavior.
+description: Change or review Soha Helm charts, values, schemas, render behavior, and chart releases. Raw deployment manifests belong to their runtime repository.
 ---
 
 # Soha Helm

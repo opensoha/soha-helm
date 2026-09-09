@@ -91,6 +91,12 @@ The bundled database uses `pgvector/pgvector:0.8.5-pg18-trixie`, enables
 `pg_stat_statements` is optional for external databases and must be configured
 and restarted by their administrator.
 
+The `soha` chart can optionally run `network-control`, `soha-ingest`, and an
+isolated ingest PostgreSQL workload through `networkRuntime.enabled`. It can
+also query bounded summaries through `config.networkIngestQuery`; both paths
+require externally issued mTLS Secrets and keep high-frequency traffic out of
+the control-plane Pod.
+
 ## Publishing
 
 Chart sources live under `charts/`. On every push to `main` that changes chart sources, GitHub Actions runs:

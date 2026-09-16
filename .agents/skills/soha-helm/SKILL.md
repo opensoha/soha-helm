@@ -13,9 +13,11 @@ and Hermes Agent Runtime runner.
 
 ## Workflow
 
-1. Read the affected chart's `Chart.yaml`, `values.yaml`,
-   `values.schema.json`, templates, README, and `scripts/test-render.sh`.
-2. Change values, schema, templates, and chart documentation together.
+1. Read the affected chart files for the task: values and schema for configuration,
+   templates and `scripts/test-render.sh` for rendering, `Chart.yaml` for packaging,
+   and README for documented behavior. Documentation-only edits need only the relevant text and its source.
+2. Synchronize values, schema, templates, and documentation when the changed behavior
+   affects them. A documentation or assertion-only edit does not require changes to the other layers.
 3. Preserve the owning runtime's configuration names and security validation;
    do not invent a Helm-only application contract.
 4. Add render assertions for branches, rollouts, mounts, secrets, selectors,
@@ -47,3 +49,4 @@ make verify
 Use focused `helm lint`, `helm template`, or
 `./scripts/test-render.sh` while iterating. `make verify` is the release
 gate for all three charts and the local repository index.
+Documentation-only changes need content, link, and diff checks; they do not trigger chart rendering or builds.

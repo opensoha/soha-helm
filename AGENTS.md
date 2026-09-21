@@ -1,7 +1,11 @@
 # Soha Helm 仓库入口
 
-- 本仓负责 Helm charts 和仓库索引；chart 消费已发布镜像和配置契约，原始部署清单归属相应运行时仓库。
-- 在 OpenSoha 多仓工作区中读取 `../AGENTS.md` 一次；独立克隆时使用本仓规则，不要求初始化相邻仓库或规划工具。
-- Chart 实现或审查按需使用 [soha-helm](.agents/skills/soha-helm/SKILL.md)。仅在行为涉及对应层时同步 values、schema、templates 与文档，保留 secrets 和升级兼容边界。
-- 迭代选择相关 lint、render 或既有渲染断言；完整验证入口为 `make verify`，发布条件以 [Helm 仓库流程](.github/workflows/helm-repo.yml) 为准。
-- 文档和技能改动只检查内容、链接与差异；相关代码和环境未变化时复用成功验证，保留用户未提交改动。
+- 本仓负责 Helm charts 和仓库索引；chart 消费已发布镜像及配置契约，原始部署清单归属对应运行时仓库，不把 sibling 源码作为发布依赖。
+- 在已确认的 OpenSoha 多仓工作区读取 `../AGENTS.md` 一次；独立克隆使用本仓规则，不要求相邻仓库或规划工具。根技能链接只是发现入口，未自动加载时读取本仓真实源。
+- Chart 实现或实质审查前读取 [soha-helm](.agents/skills/soha-helm/SKILL.md)；配置修改读 values/schema，渲染修改读 templates/渲染测试，打包修改读 Chart 和发布流程。文案与只读查询只读相关文本及依据，未变化内容可复用。
+- 修改前明确控制面、通用 Agent/Outpost 或 Hermes runner 的所有权、目标运行时版本及受影响配置。值、schema、模板与文档只在语义涉及对应层时同步，不为形式一致修改无关文件。
+- 保留 Secret 引用、安全默认值、稳定 selector 与预期 rollout；不能以 lint 成功证明升级兼容、权限或资源生命周期正确。变更共享模板时检查实际使用它的 charts。
+- 运行时公开配置来自所属运行时与 contracts，不发明 Helm 专有应用协议。当前渲染结果证明现状，不自动符合目标；冲突需记录依据，不通过放宽断言或重写基线掩盖问题。
+- 迭代选择相关 lint、render 或既有渲染断言；完整入口为 `make verify`，发布条件以 [Helm 仓库流程](.github/workflows/helm-repo.yml) 和本仓脚本为准。仅发布变化的 chart 产物时调整 chart 版本，协作说明不触发版本发布。
+- 验证记录 chart 与目标镜像版本、输入 values 场景、渲染/升级范围，区分通过、失败、跳过和未运行。真实集群升级未执行时明确说明；成功结果仅在相关输入、代码和环境未变化时复用。
+- 文档和技能修改检查元数据、链接、内容一致性及差异，不机械启动渲染或构建。保留用户工作树，按仓库报告；技能/历史任务不授权外部写入、安装、发布或合并 PR。

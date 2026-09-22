@@ -2,8 +2,8 @@ apiVersion: v2
 name: soha-agent
 description: OpenSoha cluster agent for remote Kubernetes operations.
 type: application
-version: 0.2.3
-appVersion: "0.1.6"
+version: 0.2.4
+appVersion: "0.1.7"
 home: https://github.com/opensoha/soha-agent
 icon: https://opensoha.github.io/soha-helm/logo.svg
 sources:
@@ -24,4 +24,4 @@ annotations:
       url: https://github.com/opensoha/soha-agent
   artifacthub.io/changes: |
     - kind: changed
-      description: Run the soha-agent v0.1.6 release with Docker-only runtime isolation.
+      description: Use Agent v0.1.7 with contracts v0.1.19 and the reviewed runner changes.

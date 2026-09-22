@@ -22,14 +22,28 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
-  packages: write
-  pages: write
-  id-token: write
+  contents: read
 
 jobs:
   verify:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: azure/setup-helm@v5
+        with:
+          version: v4.2.0
+      - name: Build and verify Helm repository
+        run: make verify
+
+  publish:
+    if: github.event_name != 'pull_request'
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -40,16 +54,12 @@ jobs:
       - uses: azure/setup-helm@v5
         with:
           version: v4.2.0
-      - name: Build and verify Helm repository
-        run: make verify
       - name: Configure Git
-        if: github.event_name != 'pull_request'
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       - name: Sync chart index metadata
-        if: github.event_name != 'pull_request'
         run: |
           set -euo pipefail
           worktree="$(mktemp -d)"
@@ -78,14 +88,12 @@ jobs:
           git commit -m "chore: sync helm repo metadata"
           git push origin HEAD:gh-pages
       - name: Login to GHCR
-        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Verify runtime images
-        if: github.event_name != 'pull_request'
         run: |
           set -euo pipefail
           while IFS='|' read -r chart repository prefix; do
@@ -99,7 +107,6 @@ jobs:
           soha-operator|ghcr.io/opensoha/soha-operator|
           EOF
       - name: Release Helm charts
-        if: github.event_name != 'pull_request'
         uses: helm/chart-releaser-action@v1.7.0
         with:
           skip_existing: true
@@ -108,7 +115,6 @@ jobs:
         env:
           CR_TOKEN: ${{ github.token }}
       - name: Publish Helm charts as OCI artifacts
-        if: github.event_name != 'pull_request'
         shell: bash
         run: |
           set -euo pipefail
@@ -124,21 +130,17 @@ jobs:
             helm push "${package}" "oci://ghcr.io/${GITHUB_REPOSITORY_OWNER}/charts"
           done
       - name: Configure GitHub Pages
-        if: github.event_name != 'pull_request'
         uses: actions/configure-pages@v5
       - name: Checkout published chart repository
-        if: github.event_name != 'pull_request'
         uses: actions/checkout@v7
         with:
           ref: gh-pages
           path: .pages
       - name: Upload GitHub Pages artifact
-        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
           path: .pages
       - name: Deploy GitHub Pages
-        if: github.event_name != 'pull_request'
         id: deployment
         uses: actions/deploy-pages@v4
         env:

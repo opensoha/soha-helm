@@ -346,6 +346,37 @@ entries:
       artifacthub.io/category: integration-delivery
       artifacthub.io/changes: |
         - kind: changed
+          description: Use Agent v0.1.9 with reviewed CRD capability gating, configuration, and RBAC.
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: source
+          url: https://github.com/opensoha/soha-agent
+    apiVersion: v2
+    appVersion: 0.1.9
+    created: "2026-10-06T05:15:15.503752105Z"
+    description: OpenSoha cluster agent for remote Kubernetes operations.
+    digest: ea582850954575930ae753180fb5bc67cfd584a4a316e52d1735ab0025c6812e
+    home: https://github.com/opensoha/soha-agent
+    icon: https://opensoha.github.io/soha-helm/logo.svg
+    keywords:
+    - opensoha
+    - soha-agent
+    - kubernetes
+    - delivery
+    maintainers:
+    - name: OpenSoha
+      url: https://github.com/opensoha
+    name: soha-agent
+    sources:
+    - https://github.com/opensoha/soha-agent
+    type: application
+    urls:
+    - https://github.com/opensoha/soha-helm/releases/download/soha-agent-0.2.5/soha-agent-0.2.5.tgz
+    version: 0.2.5
+  - annotations:
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/changes: |
+        - kind: changed
           description: Use Agent v0.1.7 with contracts v0.1.19 and the reviewed runner changes.
       artifacthub.io/license: Apache-2.0
       artifacthub.io/links: |
@@ -970,4 +1001,4 @@ entries:
     urls:
     - https://github.com/opensoha/soha-helm/releases/download/soha-operator-0.1.0/soha-operator-0.1.0.tgz
     version: 0.1.0
-generated: "2026-09-22T09:53:44.284388191Z"
+generated: "2026-10-06T05:15:15.503837203Z"

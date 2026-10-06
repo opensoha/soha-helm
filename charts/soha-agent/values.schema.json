@@ -2,58 +2,211 @@
   "$schema": "http://json-schema.org/schema#",
   "type": "object",
   "properties": {
-    "mode": { "type": "string", "enum": ["agent", "outpost"] },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "agent",
+        "outpost"
+      ]
+    },
     "image": {
       "type": "object",
       "properties": {
-        "repository": { "type": "string", "minLength": 1 },
-        "tag": { "type": "string" },
-        "pullPolicy": { "type": "string", "enum": ["Always", "IfNotPresent", "Never"] }
+        "repository": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tag": {
+          "type": "string"
+        },
+        "pullPolicy": {
+          "type": "string",
+          "enum": [
+            "Always",
+            "IfNotPresent",
+            "Never"
+          ]
+        }
       }
     },
-    "replicaCount": { "type": "integer", "minimum": 1 },
+    "replicaCount": {
+      "type": "integer",
+      "minimum": 1
+    },
     "secrets": {
       "type": "object",
       "properties": {
-        "agentBearerToken": { "$ref": "#/definitions/generatedSecret" },
-        "controlPlaneBearerToken": { "$ref": "#/definitions/generatedSecret" },
+        "agentBearerToken": {
+          "$ref": "#/definitions/generatedSecret"
+        },
+        "controlPlaneBearerToken": {
+          "$ref": "#/definitions/generatedSecret"
+        },
         "controlPlaneExistingSecret": {
           "type": "object",
           "properties": {
-            "name": { "type": "string" },
-            "key": { "type": "string" }
+            "name": {
+              "type": "string"
+            },
+            "key": {
+              "type": "string"
+            }
           }
+        },
+        "prometheusBearerToken": {
+          "type": "string"
         }
       }
     },
     "config": {
       "type": "object",
       "properties": {
+        "security": {
+          "type": "object",
+          "properties": {
+            "allowedActions": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
         "loggerLevel": {
           "type": "string",
-          "enum": ["debug", "info", "warn", "error"]
+          "enum": [
+            "debug",
+            "info",
+            "warn",
+            "error"
+          ]
         },
         "loggerFormat": {
           "type": "string",
-          "enum": ["json", "console"]
+          "enum": [
+            "json",
+            "console"
+          ]
         },
         "controlPlane": {
           "type": "object",
           "properties": {
-            "baseUrl": { "type": "string", "minLength": 1 },
-            "agentId": { "type": "string", "minLength": 1 },
-            "runtimeEndpoint": { "type": "string", "minLength": 1 },
+            "baseUrl": {
+              "type": "string",
+              "minLength": 1
+            },
+            "agentId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "runtimeEndpoint": {
+              "type": "string",
+              "minLength": 1
+            },
             "outpost": {
               "type": "object",
               "properties": {
-                "agentId": { "type": "string" },
-                "protocolVersion": { "type": "string", "enum": ["v1"] },
-                "trustKeyId": { "type": "string" },
-                "trustPublicKey": { "type": "string" },
-                "pollInterval": { "type": "string", "minLength": 1 },
-                "heartbeatInterval": { "type": "string", "minLength": 1 }
+                "agentId": {
+                  "type": "string"
+                },
+                "protocolVersion": {
+                  "type": "string",
+                  "enum": [
+                    "v1"
+                  ]
+                },
+                "trustKeyId": {
+                  "type": "string"
+                },
+                "trustPublicKey": {
+                  "type": "string"
+                },
+                "pollInterval": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "heartbeatInterval": {
+                  "type": "string",
+                  "minLength": 1
+                }
               }
             }
+          }
+        },
+        "prometheus": {
+          "type": "object",
+          "properties": {
+            "baseUrl": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "rbac": {
+      "type": "object",
+      "properties": {
+        "create": {
+          "type": "boolean"
+        },
+        "customResourceRules": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "object",
+            "required": [
+              "apiGroup",
+              "resources",
+              "verbs"
+            ],
+            "properties": {
+              "apiGroup": {
+                "type": "string",
+                "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$",
+                "maxLength": 253
+              },
+              "resources": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 50,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z]([a-z0-9-]*[a-z0-9])?$",
+                  "maxLength": 63
+                }
+              },
+              "verbs": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "get",
+                    "list",
+                    "watch",
+                    "create",
+                    "update",
+                    "patch",
+                    "delete"
+                  ]
+                }
+              },
+              "namespaces": {
+                "type": "array",
+                "maxItems": 50,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$",
+                  "maxLength": 63
+                }
+              }
+            },
+            "additionalProperties": false
           }
         }
       }
@@ -62,8 +215,14 @@
   "allOf": [
     {
       "if": {
-        "properties": { "mode": { "const": "outpost" } },
-        "required": ["mode"]
+        "properties": {
+          "mode": {
+            "const": "outpost"
+          }
+        },
+        "required": [
+          "mode"
+        ]
       },
       "then": {
         "properties": {
@@ -73,11 +232,22 @@
                 "properties": {
                   "outpost": {
                     "properties": {
-                      "agentId": { "minLength": 1 },
-                      "trustKeyId": { "minLength": 1 },
-                      "trustPublicKey": { "minLength": 1 }
+                      "agentId": {
+                        "minLength": 1
+                      },
+                      "trustKeyId": {
+                        "minLength": 1
+                      },
+                      "trustPublicKey": {
+                        "minLength": 1
+                      }
                     },
-                    "required": ["agentId", "protocolVersion", "trustKeyId", "trustPublicKey"]
+                    "required": [
+                      "agentId",
+                      "protocolVersion",
+                      "trustKeyId",
+                      "trustPublicKey"
+                    ]
                   }
                 }
               }
@@ -91,8 +261,12 @@
     "generatedSecret": {
       "type": "string",
       "oneOf": [
-        { "const": "" },
-        { "minLength": 32 }
+        {
+          "const": ""
+        },
+        {
+          "minLength": 32
+        }
       ]
     }
   }

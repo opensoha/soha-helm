@@ -13,6 +13,7 @@ spec:
     metadata:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum | quote }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum | quote }}
       labels:
         {{- include "soha-agent.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/part-of: opensoha
@@ -49,6 +50,11 @@ spec:
                   key: {{ required "secrets.controlPlaneExistingSecret.key is required when controlPlaneBearerToken is empty" .Values.secrets.controlPlaneExistingSecret.key }}
 {{- end }}
 {{- end }}
+            - name: SOHA_AGENT_PROMETHEUS_BEARER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "soha-agent.fullname" . }}-secrets
+                  key: prometheus-bearer-token
             - name: SOHA_AGENT_AUTH_BEARER_TOKEN
               valueFrom:
                 secretKeyRef:

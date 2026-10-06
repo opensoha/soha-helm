@@ -37,6 +37,9 @@ data:
         - {{ . | quote }}
 {{- end }}
 {{- end }}
+    prometheus:
+      base_url: {{ .Values.config.prometheus.baseUrl | quote }}
+      bearer_token: ""
     audit:
       file_path: /var/log/soha-agent/actions.jsonl
     control_plane:
@@ -56,8 +59,12 @@ data:
 {{- if eq .Values.mode "outpost" }}
         []
 {{- else }}
+{{- if .Values.config.controlPlane.providerKinds }}
 {{- range .Values.config.controlPlane.providerKinds }}
         - {{ . | quote }}
+{{- end }}
+{{- else }}
+        []
 {{- end }}
 {{- end }}
       workspace_root: {{ .Values.config.controlPlane.workspaceRoot | quote }}

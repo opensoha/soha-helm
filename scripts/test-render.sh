@@ -206,6 +206,16 @@ if grep -q 'kind: ClusterRole' "$outpost_render" || grep -q 'kind: PersistentVol
   exit 1
 fi
 grep -q 'kind: ClusterRole' "$agent_render"
+grep -q '"replicationcontrollers"' "$agent_render"
+grep -A1 'resources: \["subjectaccessreviews", "selfsubjectaccessreviews"\]' "$agent_render" | grep -q 'verbs: \["create"\]'
+grep -A1 'resources: \["pods/eviction"\]' "$agent_render" | grep -q 'verbs: \["create"\]'
+grep -B1 'resources: \["pods/eviction"\]' "$agent_render" | grep -q 'apiGroups: \[""\]'
+grep -q 'verbs: \["create","update","patch","delete"\]' "$agent_render"
+if grep -q 'pods/eviction\|pods/portforward\|verbs: \["create","update","patch","delete"\]' "$agent_without_terminal_render"; then
+  echo "agent mutation RBAC rendered without its action allowlist" >&2
+  exit 1
+fi
+
 grep -q -- '- "platform.pods.exec"' "$agent_render"
 grep -A2 'resources: \["pods/exec"\]' "$agent_render" | grep -q 'verbs: \["create"\]'
 if grep -q 'pods/exec\|platform.pods.exec' "$agent_without_terminal_render"; then
@@ -424,3 +434,31 @@ do
 done
 
 echo "render tests passed"
+
+# Named custom resource grants and credential changes must affect the rendered workload.
+helm template soha-agent "$root_dir/charts/soha-agent" \
+  --set-string 'rbac.customResourceRules[0].apiGroup=apps--demo.example.io' \
+  --set 'rbac.customResourceRules[0].resources={widget-sets}' \
+  --set 'rbac.customResourceRules[0].verbs={get,list}' \
+  --set 'rbac.customResourceRules[0].namespaces={team-a}' \
+  --set-string config.prometheus.baseUrl=http://prometheus.monitoring.svc:9090 \
+  --set-string secrets.prometheusBearerToken=test-prom-token >"$tmp_dir/custom-agent.yaml"
+grep -q 'kind: Role$' "$tmp_dir/custom-agent.yaml"
+grep -q 'kind: RoleBinding$' "$tmp_dir/custom-agent.yaml"
+grep -q 'namespace: "team-a"' "$tmp_dir/custom-agent.yaml"
+grep -q '"widget-sets"' "$tmp_dir/custom-agent.yaml"
+grep -q 'base_url: "http://prometheus.monitoring.svc:9090"' "$tmp_dir/custom-agent.yaml"
+grep -q 'SOHA_AGENT_PROMETHEUS_BEARER_TOKEN' "$tmp_dir/custom-agent.yaml"
+helm template soha-agent "$root_dir/charts/soha-agent" \
+  --set-string secrets.prometheusBearerToken=test-prom-token >"$tmp_dir/secret-agent.yaml"
+if [ "$(sed -n 's/.*checksum\/secret: //p' "$agent_render")" = "$(sed -n 's/.*checksum\/secret: //p' "$tmp_dir/secret-agent.yaml")" ]; then
+  echo "Agent credential change did not roll the workload" >&2
+  exit 1
+fi
+if helm template soha-agent "$root_dir/charts/soha-agent" \
+  --set-string 'rbac.customResourceRules[0].apiGroup=*' \
+  --set 'rbac.customResourceRules[0].resources={widgets}' \
+  --set 'rbac.customResourceRules[0].verbs={get}' >"$tmp_dir/invalid.yaml" 2>"$tmp_dir/invalid.err"; then
+  echo "wildcard custom resource grant was accepted" >&2
+  exit 1
+fi

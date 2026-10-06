@@ -1,6 +1,6 @@
 image:
   repository: ghcr.io/opensoha/soha-agent
-  tag: v0.1.7
+  tag: v0.1.9
   pullPolicy: IfNotPresent
 
 mode: agent
@@ -15,6 +15,8 @@ service:
 
 rbac:
   create: true
+  # Explicit CRD API groups/resources/verbs; namespaces scopes Role bindings.
+  customResourceRules: []
   clusterRoleName: ""
 
 serviceAccount:
@@ -22,6 +24,7 @@ serviceAccount:
   name: ""
 
 secrets:
+  prometheusBearerToken: ""
   # Generated on first install when empty, then reused from the live Secret.
   agentBearerToken: ""
   # Used only when config.controlPlane.enabled is true and the token is managed here.
@@ -79,8 +82,22 @@ config:
     labels:
       provider: agent
       owner: platform
+  prometheus:
+    baseUrl: ""
   security:
     allowedActions:
+      - runtime.execution_tasks.cancel
+      - platform.nodes.drain
+      - platform.resources.apply
+      - platform.resources.create
+      - platform.resources.delete
+      - platform.custom_resources.list
+      - platform.custom_resources.create
+      - platform.custom_resources.apply
+      - platform.custom_resources.delete
+      - platform.port_forwards.create
+      - platform.port_forwards.tunnel
+      - platform.port_forwards.delete
       - platform.pods.exec
       - platform.deployments.restart
       - platform.deployments.scale

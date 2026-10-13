@@ -26,3 +26,5 @@ The cluster-wide role can read source workloads and reconcile CronJobs. Leader-e
 | `rbac.create` | `true` | Create ClusterRole, Role, and bindings. |
 
 Helm installs CRDs from `crds/` before chart templates. Review and apply CRD schema upgrades explicitly when upgrading across API versions.
+
+The current CRD uses Kubernetes 0.37 native CronJob fields. Pod `workloadRef` was replaced upstream by `schedulingGroup`; it is separate from the required Soha `spec.sourceRef`. Existing external manifests using the old group scheduling field must migrate before the CRD update. Pair this schema with an Operator image built from the matching Kubernetes 0.37 dependencies; a chart release must select that released image through `appVersion`.

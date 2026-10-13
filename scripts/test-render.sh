@@ -1,6 +1,11 @@
 #!/bin/sh
 set -eu
 
+if [ "${GITHUB_ACTIONS:-}" != true ] && [ -z "${OPENSOHA_VERIFY_ACTIVE:-}" ] &&
+  { command -v opensoha-verify >/dev/null 2>&1 || [ -n "${OPENSOHA_LOCAL_VERIFY_REQUIRED:-}" ]; }; then
+  exec opensoha-verify run -- sh "$0" "$@"
+fi
+
 root_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 tmp_dir=$(mktemp -d)
 trap 'rm -rf "$tmp_dir"' EXIT HUP INT TERM
@@ -306,6 +311,12 @@ if ! grep -q '^                          annotations:$' "$operator_crd" ||
 fi
 if grep -q '^[[:space:]]*description:' "$operator_crd"; then
   echo "operator CRD was not generated with maxDescLen=0" >&2
+  exit 1
+fi
+if grep -q '^[[:space:]]*workloadRef:' "$operator_crd" ||
+  ! grep -q '^[[:space:]]*schedulingGroup:' "$operator_crd" ||
+  ! grep -q '^[[:space:]]*sourceRef:' "$operator_crd"; then
+  echo "operator CRD must use native schedulingGroup and retain Soha sourceRef" >&2
   exit 1
 fi
 if grep -q 'kind: ClusterRole\|kind: Role\|kind: ClusterRoleBinding\|kind: RoleBinding' "$operator_external_rbac_render"; then

@@ -51,3 +51,26 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- randAlphaNum (default 64 .length) -}}
 {{- end -}}
 {{- end -}}
+
+{{/* Installation presets resolve to the existing explicit runtime allowlist. */}}
+{{- define "soha-agent.allowedActions" -}}
+{{- $profile := default "custom" .Values.config.security.profile -}}
+{{- if eq .Values.mode "outpost" -}}
+[]
+{{- else if eq $profile "workbench" -}}
+{{- .Files.Get "files/workbench-actions.json" -}}
+{{- else if eq $profile "read-only" -}}
+{{- range .Values.rbac.customResourceRules -}}
+{{- range .verbs -}}
+{{- if not (has . (list "get" "list" "watch")) -}}
+{{- fail "read-only Agent profile cannot grant custom resource mutations" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+["platform.custom_resources.list"]
+{{- else if eq $profile "custom" -}}
+{{- .Values.config.security.allowedActions | toJson -}}
+{{- else -}}
+{{- fail "unknown Agent action profile" -}}
+{{- end -}}
+{{- end -}}

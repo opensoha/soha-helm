@@ -71,6 +71,14 @@
                 "type": "string",
                 "minLength": 1
               }
+            },
+            "profile": {
+              "type": "string",
+              "enum": [
+                "custom",
+                "workbench",
+                "read-only"
+              ]
             }
           }
         },

@@ -1,6 +1,6 @@
 image:
   repository: ghcr.io/opensoha/soha-agent
-  tag: v0.1.9
+  tag: v0.1.10
   pullPolicy: IfNotPresent
 
 mode: agent
@@ -85,6 +85,8 @@ config:
   prometheus:
     baseUrl: ""
   security:
+    # custom preserves the existing explicit list during upgrades; presets require opt-in.
+    profile: custom
     allowedActions:
       - runtime.execution_tasks.cancel
       - platform.nodes.drain

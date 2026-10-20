@@ -30,12 +30,13 @@ data:
       bearer_token_file: ""
     security:
       allowed_actions:
-{{- if eq .Values.mode "outpost" }}
-        []
-{{- else }}
-{{- range .Values.config.security.allowedActions }}
+{{- $actions := include "soha-agent.allowedActions" . | fromJsonArray }}
+{{- if $actions }}
+{{- range $actions }}
         - {{ . | quote }}
 {{- end }}
+{{- else }}
+        []
 {{- end }}
     prometheus:
       base_url: {{ .Values.config.prometheus.baseUrl | quote }}

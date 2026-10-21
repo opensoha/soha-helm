@@ -156,7 +156,7 @@ grep -q 'replicas: 2' "$replica_render"
 grep -q 'name: wait-for-postgres' "$default_render"
 grep -q -- '--host=soha-postgres' "$default_render"
 grep -q -- '--port=5432' "$default_render"
-grep -q 'image: "ghcr.io/opensoha/soha:v0.1.9"' "$default_render"
+grep -q 'image: "ghcr.io/opensoha/soha:v0.1.11"' "$default_render"
 grep -q '^  name: soha-data$' "$default_render"
 grep -q 'helm.sh/resource-policy: keep' "$default_render"
 grep -q 'mountPath: /app/data' "$default_render"
@@ -473,3 +473,32 @@ if helm template soha-agent "$root_dir/charts/soha-agent" \
   echo "wildcard custom resource grant was accepted" >&2
   exit 1
 fi
+
+# Explicit action presets retain legacy custom allowlists and never turn read-only into a writer.
+helm template soha-agent "$root_dir/charts/soha-agent" \
+  --set config.security.profile=workbench >"$tmp_dir/agent-workbench.yaml"
+for action in platform.nodes.drain platform.helm_releases.install platform.helm_releases.values_update platform.helm_releases.delete platform.helm_releases.rollback platform.resources.create platform.resources.apply platform.resources.delete platform.port_forwards.tunnel; do
+  grep -q -- "- \"$action\"" "$tmp_dir/agent-workbench.yaml"
+done
+if ! awk '/resources: \["customresourcedefinitions"\]/{getline; if ($0 ~ /create|update|patch|delete/) exit 1}' "$tmp_dir/agent-workbench.yaml"; then
+  echo "workbench implicitly grants CRD definition mutations" >&2
+  exit 1
+fi
+helm template soha-agent "$root_dir/charts/soha-agent" \
+  --set 'config.security.allowedActions={platform.crds.delete}' >"$tmp_dir/agent-crd-delete.yaml"
+awk '/resources: \["customresourcedefinitions"\]/{getline; if ($0 ~ /create|update|patch/) exit 1; if ($0 ~ /"delete"/) allowed=1} END {if (!allowed) exit 1}' "$tmp_dir/agent-crd-delete.yaml"
+helm template soha-agent "$root_dir/charts/soha-agent" \
+  --set config.security.profile=read-only >"$tmp_dir/agent-read-only.yaml"
+if grep -q 'platform.nodes.drain\|platform.resources.apply\|platform.helm_releases.install\|pods/exec\|pods/eviction\|pods/portforward\|verbs: \["create","update","patch","delete"\]\|verbs: \["update", "patch"\]' "$tmp_dir/agent-read-only.yaml"; then
+  echo "read-only Agent profile rendered mutation permissions" >&2
+  exit 1
+fi
+if helm template soha-agent "$root_dir/charts/soha-agent" \
+  --set config.security.profile=read-only \
+  --set-string 'rbac.customResourceRules[0].apiGroup=example.io' \
+  --set-string 'rbac.customResourceRules[0].resources[0]=widgets' \
+  --set-string 'rbac.customResourceRules[0].verbs[0]=create' >"$tmp_dir/read-only-invalid.yaml" 2>"$tmp_dir/read-only-invalid.err"; then
+  echo "read-only Agent profile accepted custom mutations" >&2
+  exit 1
+fi
+grep -q 'read-only Agent profile cannot grant custom resource mutations' "$tmp_dir/read-only-invalid.err"

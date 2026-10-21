@@ -17,6 +17,12 @@ helm install soha-agent opensoha/soha-agent \
   --set-string secrets.controlPlaneBearerToken="$SOHA_EXECUTION_RUNNER_TOKEN"
 ```
 
+## Kubernetes workbench action presets
+
+`config.security.profile: custom` keeps the existing `allowedActions` list during upgrades. Opt into `workbench` to enable resource CRUD, node drain, workload actions, Pod exec, port forwarding and Helm mutations together. `read-only` disables mutation/execute actions and their Kubernetes write rules; it rejects custom resource rules with write verbs. Authorization review creation is retained for diagnostics. These presets resolve to the existing explicit runtime allowlist and do not bypass Core permissions, ownership or Kubernetes RBAC.
+
+Review `helm template` and `helm diff` before applying a preset. Changing an image does not expand the action list. CRD definition deletion remains separate and is not included in workbench; custom CRD groups still require explicit `rbac.customResourceRules`. Helm can manage only resources granted to its ServiceAccount, so workbench does not promise arbitrary chart permissions. Use an Agent version containing the corresponding runtime implementation; older Agents without action diagnostics remain unverified in Soha.
+
 ## Pod terminal access
 
 Agent mode enables `platform.pods.exec` by default and grants the Agent ServiceAccount `create` on `pods/exec`. Removing `platform.pods.exec` from `config.security.allowedActions` also removes that RBAC rule from the rendered chart. Identity Outpost mode never renders Kubernetes RBAC.
@@ -67,4 +73,4 @@ helm install soha-outpost opensoha/soha-agent \
 
 Outpost mode renders `/readyz` readiness, disables Kubernetes ClusterRole and PVC resources, and creates a PodDisruptionBudget when more than one replica is requested. The ingress controller must call `/api/v1/outpost/forward-auth` with `Authorization: Bearer <agent token>` or `X-Soha-Outpost-Token: <agent token>`.
 
-The control plane and agent do not need matching SemVer values. Both must support Identity Outpost protocol `v1`; the pinned Ed25519 key ID/public key must match the control plane signer. Chart `0.2.5` targets `soha-agent v0.1.9`.
+The control plane and agent do not need matching SemVer values. Both must support Identity Outpost protocol `v1`; the pinned Ed25519 key ID/public key must match the control plane signer. Chart `0.2.7` targets `soha-agent v0.1.11`.

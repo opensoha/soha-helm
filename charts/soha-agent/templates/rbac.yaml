@@ -1,3 +1,4 @@
+{{- $allowedActions := include "soha-agent.allowedActions" . | fromJsonArray -}}
 {{- if .Values.serviceAccount.create }}
 apiVersion: v1
 kind: ServiceAccount
@@ -18,7 +19,7 @@ rules:
   - apiGroups: [""]
     resources: ["configmaps", "endpoints", "events", "limitranges", "namespaces", "nodes", "persistentvolumeclaims", "persistentvolumes", "pods", "pods/log", "replicationcontrollers", "resourcequotas", "secrets", "serviceaccounts", "services"]
     verbs: ["get", "list", "watch"]
-  {{- if has "platform.pods.exec" .Values.config.security.allowedActions }}
+  {{- if has "platform.pods.exec" $allowedActions }}
   - apiGroups: [""]
     resources: ["pods/exec"]
     verbs: ["create"]
@@ -26,17 +27,17 @@ rules:
   - apiGroups: ["apps"]
     resources: ["daemonsets", "deployments", "deployments/scale", "replicasets", "statefulsets", "statefulsets/scale"]
     verbs: ["get", "list", "watch"]
-  {{- if or (has "platform.deployments.restart" .Values.config.security.allowedActions) (has "platform.deployments.scale" .Values.config.security.allowedActions) (has "platform.deployments.image" .Values.config.security.allowedActions) (has "platform.deployments.rollback" .Values.config.security.allowedActions) }}
+  {{- if or (has "platform.deployments.restart" $allowedActions) (has "platform.deployments.scale" $allowedActions) (has "platform.deployments.image" $allowedActions) (has "platform.deployments.rollback" $allowedActions) }}
   - apiGroups: ["apps"]
     resources: ["deployments", "deployments/scale"]
     verbs: ["update", "patch"]
   {{- end }}
-  {{- if or (has "platform.statefulsets.restart" .Values.config.security.allowedActions) (has "platform.statefulsets.scale" .Values.config.security.allowedActions) }}
+  {{- if or (has "platform.statefulsets.restart" $allowedActions) (has "platform.statefulsets.scale" $allowedActions) }}
   - apiGroups: ["apps"]
     resources: ["statefulsets", "statefulsets/scale"]
     verbs: ["update", "patch"]
   {{- end }}
-  {{- if has "platform.daemonsets.restart" .Values.config.security.allowedActions }}
+  {{- if has "platform.daemonsets.restart" $allowedActions }}
   - apiGroups: ["apps"]
     resources: ["daemonsets"]
     verbs: ["update", "patch"]
@@ -86,12 +87,12 @@ rules:
   - apiGroups: ["authorization.k8s.io"]
     resources: ["subjectaccessreviews", "selfsubjectaccessreviews"]
     verbs: ["create"]
-  {{- if has "platform.port_forwards.create" .Values.config.security.allowedActions }}
+  {{- if has "platform.port_forwards.create" $allowedActions }}
   - apiGroups: [""]
     resources: ["pods/portforward"]
     verbs: ["create"]
   {{- end }}
-  {{- if has "platform.nodes.drain" .Values.config.security.allowedActions }}
+  {{- if has "platform.nodes.drain" $allowedActions }}
   - apiGroups: [""]
     resources: ["nodes"]
     verbs: ["update", "patch"]
@@ -99,10 +100,15 @@ rules:
     resources: ["pods/eviction"]
     verbs: ["create"]
   {{- end }}
+  {{- if has "platform.crds.delete" $allowedActions }}
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["delete"]
+  {{- end }}
   {{- $writeVerbs := list }}
-  {{- if has "platform.resources.create" .Values.config.security.allowedActions }}{{- $writeVerbs = append $writeVerbs "create" }}{{- end }}
-  {{- if has "platform.resources.apply" .Values.config.security.allowedActions }}{{- $writeVerbs = concat $writeVerbs (list "update" "patch") }}{{- end }}
-  {{- if has "platform.resources.delete" .Values.config.security.allowedActions }}{{- $writeVerbs = append $writeVerbs "delete" }}{{- end }}
+  {{- if has "platform.resources.create" $allowedActions }}{{- $writeVerbs = append $writeVerbs "create" }}{{- end }}
+  {{- if has "platform.resources.apply" $allowedActions }}{{- $writeVerbs = concat $writeVerbs (list "update" "patch") }}{{- end }}
+  {{- if has "platform.resources.delete" $allowedActions }}{{- $writeVerbs = append $writeVerbs "delete" }}{{- end }}
   {{- if $writeVerbs }}
   - apiGroups: [""]
     resources: ["configmaps", "limitranges", "namespaces", "nodes", "persistentvolumeclaims", "persistentvolumes", "pods", "replicationcontrollers", "resourcequotas", "secrets", "serviceaccounts", "services"]
@@ -136,9 +142,6 @@ rules:
     verbs: {{ $writeVerbs | toJson }}
   - apiGroups: ["storage.k8s.io"]
     resources: ["storageclasses"]
-    verbs: {{ $writeVerbs | toJson }}
-  - apiGroups: ["apiextensions.k8s.io"]
-    resources: ["customresourcedefinitions"]
     verbs: {{ $writeVerbs | toJson }}
   - apiGroups: ["coordination.k8s.io"]
     resources: ["leases"]

@@ -39,6 +39,84 @@ helm template soha "$root_dir/charts/soha" \
   --set-string config.idleTimeout=180s >"$restart_render"
 helm template soha "$root_dir/charts/soha" \
   --set replicaCount=2 >"$replica_render"
+cli_render="$tmp_dir/cli.yaml"
+helm template soha "$root_dir/charts/soha" \
+  --set replicaCount=2 \
+  --set config.auth.cli.enabled=true \
+  --set config.auth.cli.allowPassword=false \
+  --set-string config.auth.cli.publicURL=https://soha.example.com/team \
+  >"$cli_render"
+grep -q 'public_url: "https://soha.example.com/team"' "$cli_render"
+grep -q 'allow_password: false' "$cli_render"
+grep -q 'absolute_ttl: "720h"' "$cli_render"
+if helm template soha "$root_dir/charts/soha" --set config.auth.cli.enabled=true \
+  >"$tmp_dir/invalid-cli.yaml" 2>/dev/null; then
+  echo "CLI authentication accepted an empty public URL" >&2; exit 1
+fi
+if helm template soha "$root_dir/charts/soha" --set config.auth.cli.activeGrantLimit=0 \
+  >"$tmp_dir/invalid-cli-budget.yaml" 2>/dev/null; then
+  echo "CLI authentication accepted an unbounded grant budget" >&2; exit 1
+fi
+assert_invalid_cli() {
+  if helm template soha "$root_dir/charts/soha" --set-string "config.auth.cli.$1=$2" \
+    >"$tmp_dir/invalid-cli-case.yaml" 2>/dev/null; then
+    echo "CLI authentication accepted invalid $1" >&2; exit 1
+  fi
+}
+assert_invalid_cli publicURL http://soha.example.com/team
+assert_invalid_cli publicURL http://127.0.0.1.example.com/team
+assert_invalid_cli publicURL http://127.0.0.256/team
+assert_invalid_cli publicURL https://soha.example.com:abc/team
+assert_invalid_cli publicURL https://soha.example.com/team?handle=private
+assert_invalid_cli deviceTTL 29s
+assert_invalid_cli deviceTTL 10m1ms
+assert_invalid_cli pollInterval 999ms
+assert_invalid_cli pollInterval 30s1ms
+assert_invalid_cli accessTTL 999ms
+assert_invalid_cli idleTTL 1m
+assert_invalid_cli absoluteTTL 1h
+assert_invalid_cli absoluteTTL 8760h1ms
+for public_url in http://localhost:18080/team http://127.12.34.56:18080/team 'http://[::1]:18080/team' 'https://[2001:db8::1]:8443/team'; do
+  helm template soha "$root_dir/charts/soha" --set config.auth.cli.enabled=true \
+    --set-string "config.auth.cli.publicURL=$public_url" \
+    >"$tmp_dir/cli-loopback.yaml"
+done
+helm template soha "$root_dir/charts/soha" \
+  --set-string config.auth.cli.deviceTTL=30000ms \
+  --set-string config.auth.cli.pollInterval=1s \
+  --set-string config.auth.cli.accessTTL=1m30s \
+  --set-string config.auth.cli.idleTTL=2m \
+  --set-string config.auth.cli.absoluteTTL=8760h >"$tmp_dir/cli-duration-boundaries.yaml"
+helm template soha "$root_dir/charts/soha" \
+  --set-string config.auth.cli.deviceTTL=0s \
+  --set-string config.auth.cli.pollInterval=0ms \
+  --set-string config.auth.cli.accessTTL=0h \
+  --set-string config.auth.cli.idleTTL=0m \
+  --set-string config.auth.cli.absoluteTTL=0s >"$tmp_dir/cli-duration-defaults.yaml"
+
+# Simulate the data returned by lookup without contacting any cluster. This proves
+# template precedence only; the release acceptance still requires a live upgrade.
+cp -R "$root_dir/charts/soha" "$tmp_dir/persisted-identity"
+cat >"$tmp_dir/persisted-identity/templates/000-test-existing-config.tpl" <<'EOF'
+{{- define "soha.existingConfig" -}}
+database:
+  password: task115-existing-db
+auth:
+  jwt:
+    secret: task115-existing-jwt-12345678901234567890
+security:
+  credential_encryption_key: task115-existing-encryption-123456789012345
+{{- end -}}
+EOF
+helm template soha "$tmp_dir/persisted-identity" \
+  --set-string config.auth.jwtSecret=task115-other-jwt-12345678901234567890 \
+  --set-string config.security.credentialEncryptionKey=task115-other-encryption-123456789012345 \
+  >"$tmp_dir/persisted-identity.yaml"
+grep -q 'secret: "task115-existing-jwt-12345678901234567890"' "$tmp_dir/persisted-identity.yaml"
+grep -q 'credential_encryption_key: "task115-existing-encryption-123456789012345"' "$tmp_dir/persisted-identity.yaml"
+if grep -q 'task115-other-' "$tmp_dir/persisted-identity.yaml"; then
+  echo "Helm upgrade replaced persistent signing or encryption identity" >&2; exit 1
+fi
 helm template soha "$root_dir/charts/soha" \
   --set-string config.loggerLevel=debug >"$logger_render"
 helm template soha "$root_dir/charts/soha" \

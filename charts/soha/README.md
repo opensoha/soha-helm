@@ -38,6 +38,45 @@ settings, and system credentials are deployment-managed. In particular, do not
 change `config.security.credentialEncryptionKey` until every stored credential
 has been migrated to the replacement key and verified as decryptable. Changing
 the Helm value first makes ciphertext written with the previous key unreadable.
+Upgrades now reuse `auth.jwt.secret` and `security.credential_encryption_key`
+from the live configuration Secret, just as they reuse the database and bootstrap
+credentials. Updating these two Helm values alone does not rotate an existing
+installation's keys. Back up the database and Secret before any deliberate key
+migration; preserve the previous verification/decryption keys for live credentials.
+Offline `helm template` cannot perform a live Secret lookup and therefore only
+shows first-installation values.
+
+## CLI session authentication
+
+Device authorization and v2 password sessions are opt-in until the matching
+Core, embedded Web and CLI releases have been verified together:
+
+```yaml
+config:
+  auth:
+    cli:
+      enabled: true
+      publicURL: https://soha.example.com
+      allowPassword: false
+      accessTTL: 15m
+      idleTTL: 168h
+      absoluteTTL: 720h
+```
+
+`publicURL` is the external console address. Include the deployment prefix when
+serving below a path, and build Web for the same prefix. HTTPS is required outside
+loopback. Disabling new CLI login leaves existing sessions available for refresh
+and revocation. Key authentication and existing Web/App login remain separate.
+The chart accepts HTTP only for canonical `localhost`, `127.0.0.0/8` and `[::1]`
+addresses; Core performs final URL validation. `config.basePath` is the API path
+(normally `/api/v1`), rather than this external console prefix. Render validation
+also enforces the Core duration bounds: device lifetime 30s–10m, polling 1s–30s,
+and `1s <= accessTTL <= idleTTL <= absoluteTTL <= 8760h`. Durations use integer
+`ms`, `s`, `m`, `h` components; zero retains the corresponding Core default.
+All replicas must share PostgreSQL and the same persistent signing/encryption
+identity. Grant status, polling/attempt budgets, refresh generations and recovery
+receipts live in PostgreSQL, so a Pod restart does not reset them. Keep a working
+Web administrator session for emergency CLI-session and Key revocation.
 
 ## Network ingest summaries
 

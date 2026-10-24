@@ -81,6 +81,21 @@ config:
     # Public project default. Override before exposing a deployment.
     executionRunnerToken: soha-123456789012345678901234567890
   auth:
+    # Enable only with a verified Core + Web + CLI v2 combination.
+    cli:
+      enabled: false
+      publicURL: ""
+      allowPassword: true
+      deviceTTL: 5m
+      pollInterval: 5s
+      accessTTL: 15m
+      idleTTL: 168h
+      absoluteTTL: 720h
+      createLimit: 10
+      sourcePendingLimit: 5
+      activeGrantLimit: 1000
+      sourceAttemptLimit: 20
+      userAttemptLimit: 5
     enableDevAuth: false
     adminUserId: 67d90df8-9de4-4a7b-b3f8-86cd36f899e2
     adminName: OpenSoha
@@ -92,7 +107,7 @@ config:
       - ops
       - auditor
     jwtIssuer: soha
-    # Public project default. Override before exposing a deployment.
+    # Initial installation value. Existing live Secret identity wins on upgrades.
     jwtSecret: soha-123456789012345678901234567890
     accessTTL: 15m
     refreshTTL: 168h

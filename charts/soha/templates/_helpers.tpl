@@ -100,8 +100,47 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- include "soha.persistedCredentialValue" (dict "name" "config.auth.adminPassword" "value" .Values.config.auth.adminPassword "existing" $existing) -}}
 {{- end -}}
 
+{{/* Reuse installation identity across upgrades and replica rollouts. */}}
+{{- define "soha.jwtSecret" -}}
+{{- $existing := dig "auth" "jwt" "secret" "" (include "soha.existingConfig" . | fromYaml) -}}
+{{- include "soha.persistedCredentialValue" (dict "name" "config.auth.jwtSecret" "value" .Values.config.auth.jwtSecret "existing" $existing) -}}
+{{- end -}}
+
+{{- define "soha.credentialEncryptionKey" -}}
+{{- $existing := dig "security" "credential_encryption_key" "" (include "soha.existingConfig" . | fromYaml) -}}
+{{- include "soha.persistedCredentialValue" (dict "name" "config.security.credentialEncryptionKey" "value" .Values.config.security.credentialEncryptionKey "existing" $existing) -}}
+{{- end -}}
+
+{{/* Parse the chart's integer ms/s/m/h duration syntax, in seconds. Core treats
+     zero as the default; preserve that behavior before checking its bounds. */}}
+{{- define "soha.cliDurationSeconds" -}}
+{{- $seconds := 0.0 -}}
+{{- $units := dict "ms" 0.001 "s" 1.0 "m" 60.0 "h" 3600.0 -}}
+{{- range regexFindAll "[0-9]+(ms|s|m|h)" .value -1 -}}
+{{- $unit := regexFind "(ms|s|m|h)$" . -}}
+{{- $seconds = addf $seconds (mulf (trimSuffix $unit . | float64) (get $units $unit)) -}}
+{{- end -}}
+{{- if eq $seconds 0.0 -}}{{ .default }}{{- else -}}{{ $seconds }}{{- end -}}
+{{- end -}}
+
+{{- define "soha.validateCLIAuth" -}}
+{{- $cli := .Values.config.auth.cli -}}
+{{- $device := include "soha.cliDurationSeconds" (dict "value" $cli.deviceTTL "default" 300) | float64 -}}
+{{- $poll := include "soha.cliDurationSeconds" (dict "value" $cli.pollInterval "default" 5) | float64 -}}
+{{- $access := include "soha.cliDurationSeconds" (dict "value" $cli.accessTTL "default" 900) | float64 -}}
+{{- $idle := include "soha.cliDurationSeconds" (dict "value" $cli.idleTTL "default" 604800) | float64 -}}
+{{- $absolute := include "soha.cliDurationSeconds" (dict "value" $cli.absoluteTTL "default" 2592000) | float64 -}}
+{{- if or (lt $device 30.0) (gt $device 600.0) (lt $poll 1.0) (gt $poll 30.0) -}}
+{{- fail "CLI device TTL must be 30s..10m and polling interval 1s..30s" -}}
+{{- end -}}
+{{- if or (lt $access 1.0) (lt $idle $access) (lt $absolute $idle) (gt $absolute 31536000.0) -}}
+{{- fail "CLI session TTLs must be finite with access <= idle <= absolute <= 365d" -}}
+{{- end -}}
+{{- end -}}
+
 {{/* Keep the Secret payload and Deployment checksum on one rendered source. */}}
 {{- define "soha.appConfig" -}}
+{{- include "soha.validateCLIAuth" . -}}
 app:
   name: soha
 http:
@@ -142,6 +181,20 @@ database:
   auto_migrate: true
   migration_file: /app/migrations/postgres/0001_init.sql
 auth:
+  cli:
+    enabled: {{ .Values.config.auth.cli.enabled }}
+    public_url: {{ .Values.config.auth.cli.publicURL | quote }}
+    allow_password: {{ .Values.config.auth.cli.allowPassword }}
+    device_ttl: {{ .Values.config.auth.cli.deviceTTL | quote }}
+    poll_interval: {{ .Values.config.auth.cli.pollInterval | quote }}
+    access_ttl: {{ .Values.config.auth.cli.accessTTL | quote }}
+    idle_ttl: {{ .Values.config.auth.cli.idleTTL | quote }}
+    absolute_ttl: {{ .Values.config.auth.cli.absoluteTTL | quote }}
+    create_limit: {{ int .Values.config.auth.cli.createLimit }}
+    source_pending_limit: {{ int .Values.config.auth.cli.sourcePendingLimit }}
+    active_grant_limit: {{ int .Values.config.auth.cli.activeGrantLimit }}
+    source_attempt_limit: {{ int .Values.config.auth.cli.sourceAttemptLimit }}
+    user_attempt_limit: {{ int .Values.config.auth.cli.userAttemptLimit }}
   enable_dev_auth: {{ .Values.config.auth.enableDevAuth }}
   dev_principal:
     user_id: {{ .Values.config.auth.adminUserId | quote }}
@@ -154,7 +207,7 @@ auth:
 {{- end }}
   jwt:
     issuer: {{ .Values.config.auth.jwtIssuer | quote }}
-    secret: {{ .Values.config.auth.jwtSecret | quote }}
+    secret: {{ include "soha.jwtSecret" . | quote }}
     access_ttl: {{ .Values.config.auth.accessTTL | quote }}
     refresh_ttl: {{ .Values.config.auth.refreshTTL | quote }}
 {{- with .Values.config.auth.oidc }}
@@ -225,7 +278,7 @@ modules:
   cmdb:
     enabled: {{ .Values.config.modules.cmdb.enabled }}
 security:
-  credential_encryption_key: {{ .Values.config.security.credentialEncryptionKey | quote }}
+  credential_encryption_key: {{ include "soha.credentialEncryptionKey" . | quote }}
   secret_provider: {{ .Values.config.security.secretProvider | quote }}
 bootstrap:
   seed_defaults: {{ .Values.config.seedDefaults }}

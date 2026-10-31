@@ -105,7 +105,10 @@ Chart sources live under `charts/`. On every push to `main` that changes chart s
 make verify
 ```
 
-If a chart version changed, the workflow publishes it through both supported channels:
+Pull requests and main pushes only verify the repository. To publish a changed
+chart version, run the `helm-repo` workflow from `main` and explicitly enable its
+`publish` input. A manual run with that input disabled also only verifies.
+The publish job then uses both supported channels:
 
 - GitHub Releases plus `index.yaml` on the `gh-pages` branch, published through GitHub Pages at `https://opensoha.github.io/soha-helm`.
 - GHCR OCI artifacts below `oci://ghcr.io/opensoha/charts`; publish them as public packages before documenting them as an installation channel.

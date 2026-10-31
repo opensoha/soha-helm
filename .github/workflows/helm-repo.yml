@@ -9,6 +9,7 @@ on:
       - "index.html"
       - "logo.svg"
       - "charts/**"
+      - "scripts/**"
   push:
     branches:
       - main
@@ -19,7 +20,14 @@ on:
       - "index.html"
       - "logo.svg"
       - "charts/**"
+      - "scripts/**"
   workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish verified charts and Pages from main"
+        type: boolean
+        default: false
+        required: true
 
 permissions:
   contents: read
@@ -36,7 +44,7 @@ jobs:
         run: make verify
 
   publish:
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.publish
     needs: verify
     runs-on: ubuntu-latest
     permissions:

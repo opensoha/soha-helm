@@ -13,7 +13,7 @@ REPO_DIR ?= .cr-index
 HELM_LINT_AGENT_TOKEN ?= test-agent-token-123456789012345
 HELM_LINT_RUNNER_TOKEN ?= test-runner-token-12345678901234
 
-.PHONY: verify verify-run lint render-test package repo clean
+.PHONY: verify verify-run workflow-test lint render-test package repo clean
 
 verify: ## Verify with disposable local packages; CI retains release packages.
 ifeq ($(LOCAL_VERIFY),)
@@ -22,27 +22,12 @@ else
 	$(LOCAL_VERIFY) sh -c '$(MAKE) verify-run PACKAGE_DIR="$$OPENSOHA_VERIFY_DIR/packages" REPO_DIR="$$OPENSOHA_VERIFY_DIR/repo"'
 endif
 
-verify-run: lint render-test repo
-	@set -eu; \
-	tmp="$$(mktemp -d)"; \
-	export HELM_REPOSITORY_CONFIG="$$tmp/repositories.yaml"; \
-	export HELM_REPOSITORY_CACHE="$$tmp/cache"; \
-	mkdir -p "$$HELM_REPOSITORY_CACHE" "$$tmp/pull"; \
-	python3 -m http.server 8879 --directory "$(REPO_DIR)" >"$$tmp/http.log" 2>&1 & \
-	server_pid="$$!"; \
-	trap 'kill "$$server_pid" 2>/dev/null || true; rm -rf "$$tmp"' EXIT; \
-	for _ in 1 2 3 4 5; do \
-		curl -fsS http://127.0.0.1:8879/ >/dev/null && \
-			curl -fsS http://127.0.0.1:8879/index.yaml >/dev/null && break; \
-		sleep 1; \
-	done; \
-	helm repo add opensoha http://127.0.0.1:8879 >/dev/null; \
-	helm repo update >/dev/null; \
-	helm pull opensoha/soha --destination "$$tmp/pull" >/dev/null; \
-	helm pull opensoha/soha-agent --destination "$$tmp/pull" >/dev/null; \
-	helm pull opensoha/soha-hermes-agent --destination "$$tmp/pull" >/dev/null; \
-	helm pull opensoha/soha-observability --destination "$$tmp/pull" >/dev/null; \
-	helm pull opensoha/soha-operator --destination "$$tmp/pull" >/dev/null
+verify-run: workflow-test lint render-test repo
+	python3 scripts/test-repository.py --repository "$(REPO_DIR)" --charts $(notdir $(CHARTS))
+
+workflow-test: ## Require explicit publication from main; pushes only verify.
+	$(LOCAL_VERIFY) python3 scripts/check-release-policy.py
+	$(LOCAL_VERIFY) python3 -m unittest discover -s scripts -p 'test_release_policy.py'
 
 lint: ## Lint and render all charts.
 	$(LOCAL_VERIFY) helm lint charts/soha

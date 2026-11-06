@@ -19,13 +19,23 @@ helm install soha-agent opensoha/soha-agent \
 
 ## Kubernetes workbench action presets
 
-`config.security.profile: custom` keeps the existing `allowedActions` list during upgrades. Opt into `workbench` to enable resource CRUD, node drain, workload actions, Pod exec, port forwarding and Helm mutations together. `read-only` disables mutation/execute actions and their Kubernetes write rules; it rejects custom resource rules with write verbs. Authorization review creation is retained for diagnostics. These presets resolve to the existing explicit runtime allowlist and do not bypass Core permissions, ownership or Kubernetes RBAC.
+New installations default to `config.security.profile: auto` with `allowedActions: null`. This uses the workbench action list for resource CRUD, node drain, workload actions, Pod exec and port forwarding. The ServiceAccount receives named workbench permissions and read access to ControllerRevisions for workload history.
 
-Review `helm template` and `helm diff` before applying a preset. Changing an image does not expand the action list. CRD definition deletion remains separate and is not included in workbench; custom CRD groups still require explicit `rbac.customResourceRules`. Helm can manage only resources granted to its ServiceAccount, so workbench does not promise arbitrary chart permissions. Use an Agent version containing the corresponding runtime implementation; older Agents without action diagnostics remain unverified in Soha.
+| Profile | Runtime actions and Kubernetes permissions |
+| --- | --- |
+| `auto` (default) and `custom` | An explicit array is used as supplied. `[]` disables all actions. Omitted or null uses the prior chart's default action list. |
+| `workbench` | Uses the workbench preset independently of `allowedActions`. |
+| `read-only` | Disables writes and execution. Retains custom-resource listing and authorization reviews for diagnostics. Custom resource rules containing write verbs are rejected. |
+
+An ordinary upgrade preserves the effective action list when old saved values omit the profile, set `profile: custom` without an action list, or supply any explicit list. Review `helm template` and `helm diff` before applying changes.
+
+Existing workbench deployments that need Helm writes must add the corresponding action names explicitly when upgrading. Helm mutations require individual action names such as `platform.helm_releases.install` in an `auto` or `custom` list and cluster-wide Helm permission in Core. Treat this as privileged chart execution. A chart can run hooks and manage resources in multiple namespaces or at cluster scope using the Agent ServiceAccount. The chart grants the SDK's release-state Secret verbs and named object permissions when the corresponding actions are selected. Add reviewed RBAC for charts that need other resources.
+
+CRD definition deletion remains a separate opt-in. Custom CRD groups require explicit `rbac.customResourceRules`. The presets preserve Core authorization and Kubernetes RBAC. Secret-data access requires its independent Core permission. An image update alone leaves the installed RBAC unchanged.
 
 ## Pod terminal access
 
-Agent mode enables `platform.pods.exec` by default and grants the Agent ServiceAccount `create` on `pods/exec`. Removing `platform.pods.exec` from `config.security.allowedActions` also removes that RBAC rule from the rendered chart. Identity Outpost mode never renders Kubernetes RBAC.
+Agent mode enables `platform.pods.exec` by default and grants the Agent ServiceAccount `create` on `pods/exec`. Select `profile: custom` with an explicit action list excluding `platform.pods.exec` to remove both the action and its RBAC rule. Identity Outpost mode never renders Kubernetes RBAC.
 
 ## Custom resources, Prometheus, and delivery targets
 

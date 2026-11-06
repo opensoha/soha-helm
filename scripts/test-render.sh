@@ -552,11 +552,64 @@ if helm template soha-agent "$root_dir/charts/soha-agent" \
   exit 1
 fi
 
-# Explicit action presets retain legacy custom allowlists and never turn read-only into a writer.
+# New installs use workbench; explicit legacy lists and profiles keep their boundaries.
 helm template soha-agent "$root_dir/charts/soha-agent" \
-  --set config.security.profile=workbench >"$tmp_dir/agent-workbench.yaml"
-for action in platform.nodes.drain platform.helm_releases.install platform.helm_releases.values_update platform.helm_releases.delete platform.helm_releases.rollback platform.resources.create platform.resources.apply platform.resources.delete platform.port_forwards.tunnel; do
+  --set config.security.profile=workbench \
+  --set 'config.security.allowedActions={platform.deployments.restart}' >"$tmp_dir/agent-workbench.yaml"
+for action in platform.nodes.drain platform.resources.create platform.resources.apply platform.resources.delete platform.port_forwards.tunnel; do
   grep -q -- "- \"$action\"" "$tmp_dir/agent-workbench.yaml"
+  grep -q -- "- \"$action\"" "$agent_render"
+done
+helm template soha-agent "$root_dir/charts/soha-agent" --is-upgrade \
+  --set 'config.security.allowedActions={platform.deployments.restart}' >"$tmp_dir/agent-legacy-upgrade.yaml"
+helm template soha-agent "$root_dir/charts/soha-agent" \
+  --set config.security.profile=custom \
+  --set 'config.security.allowedActions={platform.deployments.restart}' >"$tmp_dir/agent-custom.yaml"
+for render in "$tmp_dir/agent-legacy-upgrade.yaml" "$tmp_dir/agent-custom.yaml"; do
+  grep -q -- '- "platform.deployments.restart"' "$render"
+  if grep -q 'platform.resources.create\|platform.helm_releases.install\|pods/exec\|pods/portforward\|pods/eviction' "$render"; then
+    echo "legacy/custom Agent actions were expanded to workbench" >&2
+    exit 1
+  fi
+done
+for profile in auto custom; do
+  helm template soha-agent "$root_dir/charts/soha-agent" --is-upgrade \
+    --set config.security.profile="$profile" \
+    --set-json 'config.security.allowedActions=[]' >"$tmp_dir/agent-empty-$profile.yaml"
+  if grep -q -- '- "platform\.\|- "runtime\.\|pods/exec\|pods/portforward\|pods/eviction\|verbs: \["update", "patch"\]' "$tmp_dir/agent-empty-$profile.yaml"; then
+    echo "empty explicit Agent allowlist gained actions or write rules" >&2
+    exit 1
+  fi
+done
+agent_action_lines() {
+  grep -E -- '- "(platform|runtime)\.' "$1"
+}
+for profile in auto custom; do
+  helm template soha-agent "$root_dir/charts/soha-agent" --is-upgrade \
+    --set config.security.profile="$profile" >"$tmp_dir/agent-omitted-$profile.yaml"
+  if [ "$(agent_action_lines "$agent_render")" != "$(agent_action_lines "$tmp_dir/agent-omitted-$profile.yaml")" ]; then
+    echo "omitted $profile Agent action list changed on upgrade" >&2
+    exit 1
+  fi
+done
+if grep -q 'platform.helm_releases' "$agent_render" "$tmp_dir/agent-workbench.yaml"; then
+  echo "default Agent profiles enabled Helm mutations" >&2
+  exit 1
+fi
+# Helm-only custom actions receive the supported object verbs needed by the SDK.
+helm template soha-agent "$root_dir/charts/soha-agent" \
+  --set config.security.profile=custom \
+  --set 'config.security.allowedActions={platform.helm_releases.values_update}' >"$tmp_dir/agent-helm-only.yaml"
+grep -q 'verbs: \["create","update","patch","delete"\]' "$tmp_dir/agent-helm-only.yaml"
+if grep -q 'pods/exec\|pods/portforward\|pods/eviction\|platform.resources.create' "$tmp_dir/agent-helm-only.yaml"; then
+  echo "Helm-only custom actions enabled unrelated execution actions" >&2
+  exit 1
+fi
+for action in install delete; do
+  helm template soha-agent "$root_dir/charts/soha-agent" \
+    --set config.security.profile=custom \
+    --set "config.security.allowedActions={platform.helm_releases.$action}" >"$tmp_dir/agent-helm-$action.yaml"
+  awk '/resources: \["secrets"\]/{getline; if ($0 ~ /"create"/ && $0 ~ /"update"/ && $0 ~ /"delete"/) allowed=1} END {if (!allowed) exit 1}' "$tmp_dir/agent-helm-$action.yaml"
 done
 if ! awk '/resources: \["customresourcedefinitions"\]/{getline; if ($0 ~ /create|update|patch|delete/) exit 1}' "$tmp_dir/agent-workbench.yaml"; then
   echo "workbench implicitly grants CRD definition mutations" >&2
@@ -580,3 +633,23 @@ if helm template soha-agent "$root_dir/charts/soha-agent" \
   exit 1
 fi
 grep -q 'read-only Agent profile cannot grant custom resource mutations' "$tmp_dir/read-only-invalid.err"
+
+# EndpointSlice YAML and Helm use the same action-derived workbench write rules.
+for render in "$agent_render" "$tmp_dir/agent-workbench.yaml" "$tmp_dir/agent-helm-only.yaml"; do
+  awk '/apiGroups: \["discovery.k8s.io"\]/{getline; if ($0 ~ /"endpointslices"/) {getline; if ($0 ~ /"create"/ && $0 ~ /"update"/ && $0 ~ /"patch"/ && $0 ~ /"delete"/) allowed=1}} END {if (!allowed) exit 1}' "$render"
+done
+for render in "$tmp_dir/agent-empty-auto.yaml" "$tmp_dir/agent-empty-custom.yaml" "$tmp_dir/agent-custom.yaml" "$tmp_dir/agent-read-only.yaml"; do
+  awk '/apiGroups: \["discovery.k8s.io"\]/{getline; if ($0 ~ /"endpointslices"/) {getline; if ($0 ~ /"create"|"update"|"patch"|"delete"/) denied=1}} END {if (denied) exit 1}' "$render"
+done
+
+for render in "$agent_render" "$tmp_dir/agent-workbench.yaml" "$tmp_dir/agent-read-only.yaml" "$tmp_dir/agent-custom.yaml" "$tmp_dir/agent-helm-only.yaml"; do
+  awk '/resources: .*"controllerrevisions"/{getline; if ($0 ~ /"get"/ && $0 ~ /"list"/ && $0 ~ /"watch"/) allowed=1} END {if (!allowed) exit 1}' "$render"
+  if grep -Eq '"(impersonate|bind|escalate)"|cluster-admin|apiGroups:.*"\*"|resources:.*"\*"|verbs:.*"\*"' "$render"; then
+    echo "Agent preset rendered unrestricted or escalation permissions" >&2
+    exit 1
+  fi
+done
+if grep -q 'controllerrevisions\|platform.helm_releases\|platform.resources.' "$outpost_render"; then
+  echo "Outpost inherited workbench permissions" >&2
+  exit 1
+fi

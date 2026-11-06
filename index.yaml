@@ -5,6 +5,40 @@ entries:
       artifacthub.io/category: integration-delivery
       artifacthub.io/changes: |
         - kind: changed
+          description: Use Soha v0.1.12 with the updated Kubernetes workbench, workload revision history, and resource relationships.
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: source
+          url: https://github.com/opensoha/soha
+        - name: docs
+          url: https://docs.opensoha.dev/
+    apiVersion: v2
+    appVersion: 0.1.12
+    created: "2026-11-06T04:17:24.522471304Z"
+    description: OpenSoha control plane with embedded web console and optional PostgreSQL.
+    digest: 3bbee86728939d99c85023991cc29809cc76551f73eafeb124a82065a3369044
+    home: https://github.com/opensoha/soha
+    icon: https://opensoha.github.io/soha-helm/logo.svg
+    keywords:
+    - opensoha
+    - soha
+    - ai-gateway
+    - delivery
+    - kubernetes
+    maintainers:
+    - name: OpenSoha
+      url: https://github.com/opensoha
+    name: soha
+    sources:
+    - https://github.com/opensoha/soha
+    type: application
+    urls:
+    - https://github.com/opensoha/soha-helm/releases/download/soha-0.1.12/soha-0.1.12.tgz
+    version: 0.1.12
+  - annotations:
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/changes: |
+        - kind: changed
           description: Use Soha v0.1.11 with Gateway API topology, resource monitoring, and Agent workbench parity.
       artifacthub.io/license: Apache-2.0
       artifacthub.io/links: |
@@ -376,6 +410,39 @@ entries:
     - https://github.com/opensoha/soha-helm/releases/download/soha-0.1.0/soha-0.1.0.tgz
     version: 0.1.0
   soha-agent:
+  - annotations:
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/changes: |
+        - kind: changed
+          description: Use Agent v0.1.12 with workbench permissions for EndpointSlice writes and ControllerRevision history.
+        - kind: security
+          description: Require explicit opt-in for Helm mutations and preserve custom Agent action lists on upgrade.
+      artifacthub.io/license: Apache-2.0
+      artifacthub.io/links: |
+        - name: source
+          url: https://github.com/opensoha/soha-agent
+    apiVersion: v2
+    appVersion: 0.1.12
+    created: "2026-11-06T04:17:24.718933782Z"
+    description: OpenSoha cluster agent for remote Kubernetes operations.
+    digest: 20cddca1423ea549ac09adba2f95ba837cf7a797fcbb2e6685eb094052619867
+    home: https://github.com/opensoha/soha-agent
+    icon: https://opensoha.github.io/soha-helm/logo.svg
+    keywords:
+    - opensoha
+    - soha-agent
+    - kubernetes
+    - delivery
+    maintainers:
+    - name: OpenSoha
+      url: https://github.com/opensoha
+    name: soha-agent
+    sources:
+    - https://github.com/opensoha/soha-agent
+    type: application
+    urls:
+    - https://github.com/opensoha/soha-helm/releases/download/soha-agent-0.2.8/soha-agent-0.2.8.tgz
+    version: 0.2.8
   - annotations:
       artifacthub.io/category: integration-delivery
       artifacthub.io/changes: |
@@ -1097,4 +1164,4 @@ entries:
     urls:
     - https://github.com/opensoha/soha-helm/releases/download/soha-operator-0.1.0/soha-operator-0.1.0.tgz
     version: 0.1.0
-generated: "2026-10-21T03:05:09.333982615Z"
+generated: "2026-11-06T04:17:24.7191308Z"

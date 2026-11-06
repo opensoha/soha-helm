@@ -54,7 +54,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 
 {{/* Installation presets resolve to the existing explicit runtime allowlist. */}}
 {{- define "soha-agent.allowedActions" -}}
-{{- $profile := default "custom" .Values.config.security.profile -}}
+{{- $profile := default "auto" .Values.config.security.profile -}}
 {{- if eq .Values.mode "outpost" -}}
 []
 {{- else if eq $profile "workbench" -}}
@@ -68,8 +68,12 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
 {{- end -}}
 ["platform.custom_resources.list"]
-{{- else if eq $profile "custom" -}}
+{{- else if or (eq $profile "auto") (eq $profile "custom") -}}
+{{- if kindIs "slice" .Values.config.security.allowedActions -}}
 {{- .Values.config.security.allowedActions | toJson -}}
+{{- else -}}
+{{- .Files.Get "files/workbench-actions.json" -}}
+{{- end -}}
 {{- else -}}
 {{- fail "unknown Agent action profile" -}}
 {{- end -}}

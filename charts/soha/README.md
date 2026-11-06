@@ -14,6 +14,10 @@ helm repo update
 helm install soha opensoha/soha --namespace soha --create-namespace
 ```
 
+Chart `0.1.12` defaults to `ghcr.io/opensoha/soha:v0.1.12`. If you
+reuse values from an earlier release with `--reuse-values` or supply an
+explicit image pin, set `image.tag` to `v0.1.12` to select the new image.
+
 When the bundled PostgreSQL deployment is enabled, the Soha Pod waits for the
 database to accept connections before starting the control-plane container.
 External PostgreSQL deployments remain the operator's responsibility.

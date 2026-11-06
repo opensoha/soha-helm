@@ -1,13 +1,6 @@
 [
+  "runtime.execution_tasks.cancel",
   "platform.nodes.drain",
-  "platform.pods.exec",
-  "platform.deployments.restart",
-  "platform.deployments.scale",
-  "platform.deployments.image",
-  "platform.deployments.rollback",
-  "platform.statefulsets.restart",
-  "platform.statefulsets.scale",
-  "platform.daemonsets.restart",
   "platform.resources.apply",
   "platform.resources.create",
   "platform.resources.delete",
@@ -18,9 +11,12 @@
   "platform.port_forwards.create",
   "platform.port_forwards.tunnel",
   "platform.port_forwards.delete",
-  "platform.helm_releases.install",
-  "platform.helm_releases.values_update",
-  "platform.helm_releases.delete",
-  "platform.helm_releases.rollback",
-  "runtime.execution_tasks.cancel"
+  "platform.pods.exec",
+  "platform.deployments.restart",
+  "platform.deployments.scale",
+  "platform.deployments.image",
+  "platform.deployments.rollback",
+  "platform.statefulsets.restart",
+  "platform.statefulsets.scale",
+  "platform.daemonsets.restart"
 ]

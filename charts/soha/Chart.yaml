@@ -2,8 +2,8 @@ apiVersion: v2
 name: soha
 description: OpenSoha control plane with embedded web console and optional PostgreSQL.
 type: application
-version: 0.1.11
-appVersion: "0.1.11"
+version: 0.1.12
+appVersion: "0.1.12"
 home: https://github.com/opensoha/soha
 icon: https://opensoha.github.io/soha-helm/logo.svg
 sources:
@@ -27,4 +27,4 @@ annotations:
       url: https://docs.opensoha.dev/
   artifacthub.io/changes: |
     - kind: changed
-      description: Use Soha v0.1.11 with Gateway API topology, resource monitoring, and Agent workbench parity.
+      description: Use Soha v0.1.12 with the updated Kubernetes workbench, workload revision history, and resource relationships.

@@ -25,7 +25,7 @@ rules:
     verbs: ["create"]
   {{- end }}
   - apiGroups: ["apps"]
-    resources: ["daemonsets", "deployments", "deployments/scale", "replicasets", "statefulsets", "statefulsets/scale"]
+    resources: ["controllerrevisions", "daemonsets", "deployments", "deployments/scale", "replicasets", "statefulsets", "statefulsets/scale"]
     verbs: ["get", "list", "watch"]
   {{- if or (has "platform.deployments.restart" $allowedActions) (has "platform.deployments.scale" $allowedActions) (has "platform.deployments.image" $allowedActions) (has "platform.deployments.rollback" $allowedActions) }}
   - apiGroups: ["apps"]
@@ -105,10 +105,17 @@ rules:
     resources: ["customresourcedefinitions"]
     verbs: ["delete"]
   {{- end }}
+  {{/* Helm's Secret driver updates release state during install and uninstall too. */}}
+  {{- if or (has "platform.helm_releases.install" $allowedActions) (has "platform.helm_releases.values_update" $allowedActions) (has "platform.helm_releases.rollback" $allowedActions) (has "platform.helm_releases.delete" $allowedActions) }}
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create", "update", "patch", "delete"]
+  {{- end }}
   {{- $writeVerbs := list }}
-  {{- if has "platform.resources.create" $allowedActions }}{{- $writeVerbs = append $writeVerbs "create" }}{{- end }}
-  {{- if has "platform.resources.apply" $allowedActions }}{{- $writeVerbs = concat $writeVerbs (list "update" "patch") }}{{- end }}
-  {{- if has "platform.resources.delete" $allowedActions }}{{- $writeVerbs = append $writeVerbs "delete" }}{{- end }}
+  {{- $helmUpgrade := or (has "platform.helm_releases.values_update" $allowedActions) (has "platform.helm_releases.rollback" $allowedActions) }}
+  {{- if or (has "platform.resources.create" $allowedActions) (has "platform.helm_releases.install" $allowedActions) $helmUpgrade }}{{- $writeVerbs = append $writeVerbs "create" }}{{- end }}
+  {{- if or (has "platform.resources.apply" $allowedActions) $helmUpgrade }}{{- $writeVerbs = concat $writeVerbs (list "update" "patch") }}{{- end }}
+  {{- if or (has "platform.resources.delete" $allowedActions) (has "platform.helm_releases.delete" $allowedActions) $helmUpgrade }}{{- $writeVerbs = append $writeVerbs "delete" }}{{- end }}
   {{- if $writeVerbs }}
   - apiGroups: [""]
     resources: ["configmaps", "limitranges", "namespaces", "nodes", "persistentvolumeclaims", "persistentvolumes", "pods", "replicationcontrollers", "resourcequotas", "secrets", "serviceaccounts", "services"]
@@ -121,6 +128,9 @@ rules:
     verbs: {{ $writeVerbs | toJson }}
   - apiGroups: ["networking.k8s.io"]
     resources: ["ingressclasses", "ingresses", "networkpolicies"]
+    verbs: {{ $writeVerbs | toJson }}
+  - apiGroups: ["discovery.k8s.io"]
+    resources: ["endpointslices"]
     verbs: {{ $writeVerbs | toJson }}
   - apiGroups: ["autoscaling"]
     resources: ["horizontalpodautoscalers"]

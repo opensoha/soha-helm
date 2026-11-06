@@ -65,20 +65,26 @@
           "type": "object",
           "properties": {
             "allowedActions": {
-              "type": "array",
+              "type": [
+                "array",
+                "null"
+              ],
               "uniqueItems": true,
               "items": {
                 "type": "string",
                 "minLength": 1
-              }
+              },
+              "description": "In auto and custom profiles, use an explicit action list or [] to deny all actions. Omitted or null uses the legacy default list."
             },
             "profile": {
               "type": "string",
               "enum": [
+                "auto",
                 "custom",
                 "workbench",
                 "read-only"
-              ]
+              ],
+              "description": "auto and custom honor explicit action lists. workbench selects the default workbench action set. read-only disables writes and execution."
             }
           }
         },

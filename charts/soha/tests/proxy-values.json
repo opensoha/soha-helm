@@ -1,0 +1,67 @@
+{
+  "proxyRuntime": {
+    "enabled": true,
+    "name": "soha-proxy",
+    "replicas": 0,
+    "image": "registry.example/soha-proxy-mihomo@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "controlUrl": "https://control.example:8082",
+    "ingestUrl": "https://ingest.example:8083",
+    "endpointId": "proxy-ingress",
+    "members": [
+      {
+        "instanceId": "soha-proxy-0",
+        "runtimeId": "runtime-0",
+        "existingSecret": "proxy-member-0"
+      },
+      {
+        "instanceId": "soha-proxy-1",
+        "runtimeId": "runtime-1",
+        "existingSecret": "proxy-member-1"
+      }
+    ]
+  },
+  "proxyExecutor": {
+    "enabled": true,
+    "start": false,
+    "image": {
+      "repository": "registry.example/soha",
+      "tag": "candidate"
+    },
+    "controlPlaneUrl": "https://soha.example",
+    "executorId": "proxy-executor",
+    "existingTokenSecret": "proxy-executor-token",
+    "slots": [
+      {
+        "id": "proxy-slot",
+        "proxyId": "proxy-master",
+        "executorId": "proxy-executor",
+        "workloadKind": "StatefulSet",
+        "namespace": "default",
+        "name": "soha-proxy",
+        "uid": "test-only-live-uid",
+        "templateDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "maxReplicas": 2,
+        "allowAdoption": false,
+        "previousOwnerStopped": false,
+        "members": [
+          {
+            "instanceId": "soha-proxy-0",
+            "runtimeId": "runtime-0",
+            "ordinal": 0
+          },
+          {
+            "instanceId": "soha-proxy-1",
+            "runtimeId": "runtime-1",
+            "ordinal": 1
+          }
+        ],
+        "endpoints": [
+          {
+            "endpointId": "proxy-ingress",
+            "url": "https://proxy.example"
+          }
+        ]
+      }
+    ]
+  }
+}

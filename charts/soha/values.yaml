@@ -185,3 +185,86 @@ securityContext:
   capabilities:
     drop:
       - ALL
+
+# Disabled for core-only installs. Requires a newly built Core image containing
+# /app/outpost-runtime-executor and a dedicated installer-provisioned token.
+outpostExecutor:
+  enabled: false
+  # Set true only after the admission policy is installed and verified.
+  start: false
+  image:
+    repository: ""
+    tag: ""
+    pullPolicy: IfNotPresent
+  controlPlaneUrl: ""
+  executorId: ""
+  existingTokenSecret: ""
+  tokenKey: token
+  # Existing Ed25519 signing material only; never place private key bytes here.
+  # Core expands its private-key environment reference from this Secret.
+  signingKey:
+    keyId: ""
+    existingSecret: ""
+    key: private-key
+  slots: []
+
+# Independent data plane; never starts in a core-only installation.
+proxyRuntime:
+  enabled: false
+  name: soha-proxy
+  replicas: 0
+  image: ""
+  engine: mihomo
+  engineBinary: /mihomo
+  existingProbeProfilesSecret: ""
+  controlUrl: ""
+  ingestUrl: ""
+  endpointId: ""
+  # TLS passthrough LoadBalancer; certificate SAN must match the public hostname.
+  serviceType: LoadBalancer
+  storageClass: ""
+  storageSize: 1Gi
+  # Ordered ordinal -> independently enrolled runtime and Secret. See PROXY.md.
+  members: []
+
+proxyExecutor:
+  enabled: false
+  start: false
+  image:
+    repository: ""
+    tag: ""
+    pullPolicy: IfNotPresent
+  controlPlaneUrl: ""
+  executorId: ""
+  existingTokenSecret: ""
+  tokenKey: token
+  slots: []
+
+# IDs only; runtime target URLs remain in installer-owned private profile files.
+proxyProbeProfiles: []
+
+# Optional Linux FreeRADIUS supervisor. Each ordinal PVC must be provisioned by
+# the installer before enabling replicas; chart never creates approved material.
+radiusRuntime:
+  enabled: false
+  name: soha-radius
+  serviceAccount: soha-radius
+  replicas: 0
+  image: ""
+  storageClass: ""
+  storageSize: 1Gi
+  # Ordered memberId/runtimeId/ordinal/endpoint/credentialRef; no private values.
+  members: []
+
+radiusExecutor:
+  enabled: false
+  start: false
+  image:
+    repository: ""
+    tag: ""
+    pullPolicy: IfNotPresent
+  baseUrl: ""
+  executorId: ""
+  existingTokenSecret: ""
+  tokenKey: token
+  slots: []

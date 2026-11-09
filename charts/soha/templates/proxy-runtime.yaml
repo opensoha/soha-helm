@@ -1,0 +1,234 @@
+{{- if .Values.proxyRuntime.enabled }}
+{{- $c := .Values.proxyRuntime }}
+{{- if or (not $c.image) (not $c.engineBinary) (not $c.endpointId) (not (hasPrefix "https://" $c.controlUrl)) (not (hasPrefix "https://" $c.ingestUrl)) (not $c.members) }}{{ fail "Proxy runtime requires image, binary, HTTPS control/ingest, endpoint and independent members" }}{{ end }}
+{{- if gt ($c.replicas | int) (len $c.members) }}{{ fail "Proxy replicas exceed installed identities" }}{{ end }}
+{{- $runtimes := dict }}{{- $secrets := dict }}
+{{- range $i, $m := $c.members }}
+{{- if or (ne $m.instanceId (printf "%s-%d" $c.name $i)) (hasKey $runtimes $m.runtimeId) (hasKey $secrets $m.existingSecret) }}{{ fail "Proxy requires unique per-ordinal runtime identities and Secrets" }}{{ end }}
+{{- $_ := set $runtimes $m.runtimeId true }}{{- $_ := set $secrets $m.existingSecret true }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $c.name }}-identities
+data:
+{{- range $m := $c.members }}
+  {{ $m.instanceId }}: {{ $m.runtimeId | quote }}
+{{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $c.name }}-members
+spec:
+  clusterIP: None
+  selector:
+    soha-proxy-runtime: {{ $c.name }}
+  ports:
+    - name: https
+      port: 8443
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $c.name }}
+spec:
+  type: {{ $c.serviceType }}
+  selector:
+    soha-proxy-runtime: {{ $c.name }}
+  ports:
+    - name: https
+      port: 443
+      targetPort: 8443
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $c.name }}
+spec:
+  replicas: {{ $c.replicas }}
+  serviceName: {{ $c.name }}-members
+  podManagementPolicy: Parallel
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  selector:
+    matchLabels:
+      soha-proxy-runtime: {{ $c.name }}
+  template:
+    metadata:
+      labels:
+        soha-proxy-runtime: {{ $c.name }}
+      annotations:
+        checksum/config: {{ $c | toJson | sha256sum | quote }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        fsGroupChangePolicy: OnRootMismatch
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: prepare-identity
+          image: {{ $c.image | quote }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              umask 077
+              mkdir -p /private/identity
+              chmod 0700 /private/identity
+              for key in control.crt control.key control-ca.crt ingest.crt ingest.key ingest-ca.crt ingress.crt ingress.key controller-secret; do
+                test -s "/secret-source/$key"
+                cp "/secret-source/$key" "/private/identity/$key"
+                chmod 0600 "/private/identity/$key"
+              done
+          volumeMounts:
+            - name: identity-source
+              mountPath: /secret-source
+              subPathExpr: $(POD_NAME)
+              readOnly: true
+            - name: identities
+              mountPath: /private
+      containers:
+        - name: runtime
+          image: {{ $c.image | quote }}
+          command: ["/bin/sh", "-ec"]
+          args:
+            - 'export SOHA_PROXY_RUNTIME_ID="$(cat /etc/soha-proxy-runtime/runtime-id)"; exec /usr/local/bin/soha-proxy-runtime'
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          env:
+{{- if $c.existingProbeProfilesSecret }}
+            - name: SOHA_PROXY_PROBE_PROFILES_FILE
+              value: /run/probe-profiles/profiles.json
+{{- end }}
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: SOHA_PROXY_INSTANCE_ID
+              value: $(POD_NAME)
+            - name: SOHA_PROXY_MANAGED_DEPLOYMENT
+              value: "true"
+            - name: SOHA_PROXY_ENGINE
+              value: {{ $c.engine | quote }}
+            - name: SOHA_PROXY_ENGINE_BINARY
+              value: {{ $c.engineBinary | quote }}
+            - name: SOHA_PROXY_STATE_DIR
+              value: /var/lib/soha-proxy-runtime/state
+            - name: SOHA_PROXY_CONTROL_URL
+              value: {{ $c.controlUrl | quote }}
+            - name: SOHA_PROXY_INGEST_URL
+              value: {{ $c.ingestUrl | quote }}
+            - name: SOHA_PROXY_CONTROLLER_URL
+              value: http://127.0.0.1:9090
+            - name: SOHA_PROXY_CONTROLLER_SECRET_FILE
+              value: /run/identity/controller-secret
+            - name: SOHA_PROXY_CONTROL_CERT_FILE
+              value: /run/identity/control.crt
+            - name: SOHA_PROXY_CONTROL_KEY_FILE
+              value: /run/identity/control.key
+            - name: SOHA_PROXY_CONTROL_CA_FILE
+              value: /run/identity/control-ca.crt
+            - name: SOHA_PROXY_INGEST_CERT_FILE
+              value: /run/identity/ingest.crt
+            - name: SOHA_PROXY_INGEST_KEY_FILE
+              value: /run/identity/ingest.key
+            - name: SOHA_PROXY_INGEST_CA_FILE
+              value: /run/identity/ingest-ca.crt
+            - name: SOHA_PROXY_HEALTH_LISTEN
+              value: 0.0.0.0:9091
+            - name: SOHA_PROXY_INGRESS_LISTEN
+              value: 0.0.0.0:8443
+            - name: SOHA_PROXY_INGRESS_ENDPOINT_ID
+              value: {{ $c.endpointId | quote }}
+            - name: SOHA_PROXY_INGRESS_CERT_FILE
+              value: /run/identity/ingress.crt
+            - name: SOHA_PROXY_INGRESS_KEY_FILE
+              value: /run/identity/ingress.key
+          ports:
+            - name: https
+              containerPort: 8443
+            - name: health
+              containerPort: 9091
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: health
+            periodSeconds: 5
+            failureThreshold: 2
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: "1", memory: 512Mi}
+          volumeMounts:
+{{- if $c.existingProbeProfilesSecret }}
+            - name: probe-profiles
+              mountPath: /run/probe-profiles
+              readOnly: true
+{{- end }}
+            - name: state
+              mountPath: /var/lib/soha-proxy-runtime
+            - name: identities
+              mountPath: /run/identity
+              subPath: identity
+              readOnly: true
+            - name: runtime-ids
+              mountPath: /etc/soha-proxy-runtime/runtime-id
+              subPathExpr: $(POD_NAME)
+              readOnly: true
+      volumes:
+{{- if $c.existingProbeProfilesSecret }}
+        - name: probe-profiles
+          secret:
+            secretName: {{ $c.existingProbeProfilesSecret | quote }}
+            defaultMode: 0440
+            items:
+              - key: profiles.json
+                path: profiles.json
+{{- end }}
+        - name: runtime-ids
+          configMap:
+            name: {{ $c.name }}-identities
+        - name: identities
+          emptyDir:
+            medium: Memory
+        - name: identity-source
+          projected:
+            defaultMode: 0440
+            sources:
+{{- range $m := $c.members }}
+              - secret:
+                  name: {{ $m.existingSecret | quote }}
+                  items:
+{{- range $key := list "control.crt" "control.key" "control-ca.crt" "ingest.crt" "ingest.key" "ingest-ca.crt" "ingress.crt" "ingress.key" "controller-secret" }}
+                    - key: {{ $key }}
+                      path: {{ $m.instanceId }}/{{ $key }}
+{{- end }}
+{{- end }}
+  volumeClaimTemplates:
+    - metadata:
+        name: state
+      spec:
+        accessModes: [ReadWriteOnce]
+{{- if $c.storageClass }}
+        storageClassName: {{ $c.storageClass | quote }}
+{{- end }}
+        resources:
+          requests:
+            storage: {{ $c.storageSize | quote }}
+{{- end }}

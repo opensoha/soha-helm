@@ -1,3 +1,11 @@
+{{- if eq .Values.mode "outpost" }}
+{{- if not (or .Values.persistence.enabled .Values.outpostRuntime.existingStateClaim) }}
+{{- fail "Outpost requires persistent state; enable persistence or supply outpostRuntime.existingStateClaim" }}
+{{- end }}
+{{- if and (gt (int .Values.replicaCount) 1) (ne .Values.outpostRuntime.accessMode "ReadWriteMany") }}
+{{- fail "multi-replica Outpost requires a ReadWriteMany state claim" }}
+{{- end }}
+{{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -123,8 +131,15 @@ data:
         agent_id: {{ .Values.config.controlPlane.outpost.agentId | quote }}
         protocol_version: {{ .Values.config.controlPlane.outpost.protocolVersion | quote }}
 {{- if eq .Values.mode "outpost" }}
-        trust_key_id: {{ required "config.controlPlane.outpost.trustKeyId is required in outpost mode" .Values.config.controlPlane.outpost.trustKeyId | quote }}
-        trust_public_key: {{ required "config.controlPlane.outpost.trustPublicKey is required in outpost mode" .Values.config.controlPlane.outpost.trustPublicKey | quote }}
+{{- if not (or .Values.config.controlPlane.outpost.trustPublicKeys (and .Values.config.controlPlane.outpost.trustKeyId .Values.config.controlPlane.outpost.trustPublicKey)) }}
+{{- fail "Outpost requires a trust key pair or trustPublicKeys" }}
+{{- end }}
+        trust_key_id: {{ .Values.config.controlPlane.outpost.trustKeyId | quote }}
+        trust_public_key: {{ .Values.config.controlPlane.outpost.trustPublicKey | quote }}
+        trust_public_keys: {{ .Values.config.controlPlane.outpost.trustPublicKeys | toJson }}
+        runtime_control_enabled: {{ eq .Values.outpostRuntime.owner "soha" }}
+        instance_id: ""
+        state_dir: .soha/outpost
 {{- else }}
         trust_key_id: ""
         trust_public_key: ""

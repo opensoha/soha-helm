@@ -1,0 +1,131 @@
+{{- if .Values.radiusRuntime.enabled }}
+{{- $c := .Values.radiusRuntime }}
+{{- if or (not $c.image) (not $c.members) }}{{ fail "RADIUS runtime requires image and installer-approved independent members" }}{{ end }}
+{{- if gt ($c.replicas | int) (len $c.members) }}{{ fail "RADIUS replicas exceed installed identities" }}{{ end }}
+{{- $runtimes := dict }}{{- $endpoints := dict }}{{- $credentials := dict }}
+{{- range $i, $m := $c.members }}
+{{- if or (ne $m.memberId (printf "%s-%d" $c.name $i)) (ne ($m.ordinal | int) $i) (hasKey $runtimes $m.runtimeId) (hasKey $endpoints $m.endpoint) (hasKey $credentials $m.credentialRef) }}{{ fail "RADIUS requires independent per-ordinal identities, endpoints and credentials" }}{{ end }}
+{{- $_ := set $runtimes $m.runtimeId true }}{{- $_ := set $endpoints $m.endpoint true }}{{- $_ := set $credentials $m.credentialRef true }}
+{{- end }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $c.serviceAccount }}
+automountServiceAccountToken: false
+---
+# Headless discovery only: NAS must target an individual member DNS endpoint.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $c.name }}-members
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector:
+    soha-radius-runtime: {{ $c.name }}
+  ports:
+    - name: authentication
+      protocol: UDP
+      port: 1812
+    - name: accounting
+      protocol: UDP
+      port: 1813
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $c.name }}
+spec:
+  replicas: {{ $c.replicas }}
+  serviceName: {{ $c.name }}-members
+  podManagementPolicy: Parallel
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  selector:
+    matchLabels:
+      soha-radius-runtime: {{ $c.name }}
+  template:
+    metadata:
+      labels:
+        soha-radius-runtime: {{ $c.name }}
+      annotations:
+        checksum/config: {{ $c | toJson | sha256sum | quote }}
+    spec:
+      serviceAccountName: {{ $c.serviceAccount }}
+      automountServiceAccountToken: false
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: prepare-native-run
+          image: {{ $c.image | quote }}
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              chmod 0700 /run/freeradius
+              chown "$(id -u freerad):$(id -g freerad)" /run/freeradius
+              chmod 1777 /tmp
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+              add: [CHOWN]
+          volumeMounts:
+            - name: native-run
+              mountPath: /run/freeradius
+            - name: tmp
+              mountPath: /tmp
+      containers:
+        - name: runtime
+          image: {{ $c.image | quote }}
+          command: ["/usr/local/bin/radius-runtime"]
+          args: ["--config", "/var/lib/soha-radius/snapshot/runtime.json"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+              add: [CHOWN, SETUID, SETGID, KILL]
+          ports:
+            - name: authentication
+              protocol: UDP
+              containerPort: 1812
+            - name: accounting
+              protocol: UDP
+              containerPort: 1813
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: "1", memory: 512Mi}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/soha-radius/snapshot
+              subPath: snapshot
+              readOnly: true
+            - name: data
+              mountPath: /var/lib/soha-radius/state
+              subPath: state
+            - name: native-run
+              mountPath: /run/freeradius
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: native-run
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+{{- if $c.storageClass }}
+        storageClassName: {{ $c.storageClass | quote }}
+{{- end }}
+        resources:
+          requests:
+            storage: {{ $c.storageSize | quote }}
+{{- end }}

@@ -140,3 +140,103 @@ Helm schema validation fails when any of these keys remain, rather than silently
 discarding them. Remove them from the release values before upgrading, then
 configure Prometheus and Grafana for each cluster through the Soha console or
 API. Existing Helm values are not migrated automatically.
+
+Optional independent Proxy data plane and scale-only executor: [PROXY.md](PROXY.md). Both are disabled by default.
+
+TLS materials for `config.networkIngestQuery`, `networkRuntime` and `proxyRuntime`
+are copied at Pod startup by a non-root init container from read-only Secret sources
+into a memory-backed `emptyDir` private child (0700, files 0600). Main containers
+mount only that child read-only at the existing TLS paths. The Secret remains the
+source of truth; credential changes require a coordinated Pod restart, with no
+automatic reload. Proxy identity rotation also requires drain/stop and live template
+pin review as described in [PROXY.md](PROXY.md).
+
+`config.networkIngestQuery`、`networkRuntime`、`proxyRuntime` 的 TLS 材料仅在 Pod
+启动时由非 root init container 从只读 Secret 复制到内存卷的私有子目录（0700，文件 0600），
+主容器按原路径只读挂载。Secret 仍为真实源；轮换后须协调重启，没有自动重载。
+Proxy 身份轮换还须按 [PROXY.md](PROXY.md) 排空、停止并核对 live template pin。
+
+## Optional managed RADIUS runtime
+
+`radiusRuntime` and `radiusExecutor` are disabled by default. They require a
+verified candidate image containing `/usr/local/bin/radius-runtime` and a Core
+image containing `/app/radius-runtime-executor`; image tags in test fixtures are
+illustrative and are not published release claims. No cluster upgrade or NAS
+acceptance is implied by rendering this chart.
+
+Installation has two phases. First install `radiusRuntime.enabled=true` with
+`replicas=0` and independently approved ordered `members`, leaving the executor
+disabled. An installer must provision **each** PVC
+`data-<radiusRuntime.name>-<ordinal>` (the chart does not create private material)
+with its own `snapshot/` and `state/` directories. Keep `runtime.json`, common
+control TLS files and locally pre-approved A/B configuration directories beneath
+`snapshot/`; the fixed PVC mounts already support these nested directories.
+Each ordinal has its own root-owned 0600 JSON and private identities. Use
+`installation.configurationCatalog` entries containing the full approved
+`material`, `directory`, `treeSHA256`, `hooks`, `environment`, `materials` and
+`certificates`. Do not combine this catalog with the legacy top-level single
+snapshot fields or `control.configuration`. See the
+[configuration catalog example and switch procedure](RADIUS-CATALOG.md).
+
+The installer must verify the common control TLS certificate, key and CA against
+`installation.materials` before the client reads them, independently of the
+selected catalog entry. Every protected file/directory and **every ancestor** to
+`/` must be root owned, non-symlink and not group/other writable; there is no
+`/tmp` or sticky-directory exception. Private directories must be
+root:freerad-group 0710 and child-readable configuration/material files
+root:freerad-group 0640; runtime JSON stays 0600 and state is never group writable.
+Use the selected image's actual freerad UID/GID. The chart mounts snapshot read
+only and state writable from that ordinal's PVC; it never projects every
+member's Secret into every Pod or generates credentials, hashes or attestation.
+The installer owns PVC preparation and verification before enabling replicas.
+
+`radius-runtime --configuration-digest DIR` only reads a protected configuration
+tree and prints its 64-character SHA-256. It does not sign or approve a tree,
+attest hooks, fetch files, or start FreeRADIUS. Pre-approve both A and B locally;
+after A has exact stopped/wait proof, a subsequent process epoch may select B
+when Core supplies its complete matching approved material. This is not a hot
+reload or remote file download and needs no Kubernetes Pod-template change.
+
+The Linux supervisor runs as UID 0 with all capabilities dropped except CHOWN,
+SETUID, SETGID and KILL; these support private socket ownership, child privilege
+drop and termination. A same-image init container only prepares the independent
+native-run and temporary emptyDirs; it cannot access the PVC. Configure the
+approved flat tree's native `run_dir` as `/run/freeradius`, with logs to stdout
+or a file inside that directory, never the read-only image `/var/log` or private
+supervisor state. The chart does not attest that these capabilities or a
+particular image have passed real container execution.
+
+Then inspect the installed StatefulSet's actual UID, template digest and service
+account and approve a `radiusExecutor.slots` entry. Slots use Core domain JSON:
+`id`, `siteId`, `nasBindingId`, `nasId`, `nasName`, `accessMedium` (plus `ssid` for
+WiFi), `executorId`, target namespace/name/UID/workloadKind/templateDigest,
+`serviceAccount`, `maxReplicas`, independent `members`, and `configurations`
+containing `material` references and public `eapServerTrust`. They are mapped to
+Core's `runtime.radius_slots` and passed unchanged to the dedicated executor.
+Configure its independent existing token Secret, HTTPS `baseUrl` and image;
+`start=false` keeps the executor stopped until installer pins are reviewed.
+Never reuse Proxy, Outpost or generic runner credentials. No management UI may
+supply arbitrary image, YAML or private material. Kubernetes v1 validating
+admission policies and bindings are required; the policy fails closed and RBAC
+allows get and scale-update only on named approved workloads. The executor also
+checks UID, template digest, service account and resourceVersion before scaling.
+
+Every member's endpoint must route directly to that member. The sole headless
+Service is for discovery; configure NAS with individual addresses such as
+`soha-radius-0.soha-radius-members.<namespace>.svc:1812` only where the NAS can
+resolve and reach that address. There is no shared UDP LoadBalancer or
+round-robin authentication endpoint. External per-member networking must be
+prepared separately before installation approval. Kubernetes readiness is not
+RADIUS traffic readiness or proof that a NAS used the member; the chart does
+not create a readiness probe that would imply either.
+
+Parallel pod management permits approved member scaling. PVC retention is
+`Retain` both on scale-down and StatefulSet deletion/uninstall. Retain PVCs and
+private snapshots until the installer explicitly handles recovery or secure
+removal. Stop/drain via Core's managed pool lifecycle and observe real member
+proof before uninstalling workloads; Helm uninstall is not a proven drain or
+safe stop. An upgrade reapplies `radiusRuntime.replicas` and may replace the
+Pod template: drain and stop the managed pool before such maintenance, then
+renew changed pins before resuming. Do not delete retained PVCs or credentials as an implicit uninstall
+step. A reinstall/replacement UID or template change requires renewed installer
+pins; never substitute fixture values from `tests/radius-values.json`.

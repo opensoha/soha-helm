@@ -144,6 +144,16 @@
                 "heartbeatInterval": {
                   "type": "string",
                   "minLength": 1
+                },
+                "trustPublicKeys": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "propertyNames": {
+                    "minLength": 1
+                  }
                 }
               }
             }
@@ -224,6 +234,27 @@
           }
         }
       }
+    },
+    "outpostRuntime": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "owner": {
+          "enum": [
+            "external",
+            "soha"
+          ]
+        },
+        "existingStateClaim": {
+          "type": "string"
+        },
+        "accessMode": {
+          "enum": [
+            "ReadWriteOnce",
+            "ReadWriteMany"
+          ]
+        }
+      }
     }
   },
   "allOf": [
@@ -248,19 +279,37 @@
                     "properties": {
                       "agentId": {
                         "minLength": 1
-                      },
-                      "trustKeyId": {
-                        "minLength": 1
-                      },
-                      "trustPublicKey": {
-                        "minLength": 1
                       }
                     },
                     "required": [
                       "agentId",
-                      "protocolVersion",
-                      "trustKeyId",
-                      "trustPublicKey"
+                      "protocolVersion"
+                    ],
+                    "anyOf": [
+                      {
+                        "properties": {
+                          "trustKeyId": {
+                            "minLength": 1
+                          },
+                          "trustPublicKey": {
+                            "minLength": 1
+                          }
+                        },
+                        "required": [
+                          "trustKeyId",
+                          "trustPublicKey"
+                        ]
+                      },
+                      {
+                        "properties": {
+                          "trustPublicKeys": {
+                            "minProperties": 1
+                          }
+                        },
+                        "required": [
+                          "trustPublicKeys"
+                        ]
+                      }
                     ]
                   }
                 }

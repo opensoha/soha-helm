@@ -1,0 +1,91 @@
+{
+  "radiusRuntime": {
+    "enabled": true,
+    "image": "example/radius-runtime:candidate",
+    "members": [
+      {
+        "memberId": "soha-radius-0",
+        "runtimeId": "radius-member:lab-0",
+        "ordinal": 0,
+        "endpoint": "soha-radius-0.soha-radius-members.control.svc:1812",
+        "credentialRef": "secretref:radius-0"
+      },
+      {
+        "memberId": "soha-radius-1",
+        "runtimeId": "radius-member:lab-1",
+        "ordinal": 1,
+        "endpoint": "soha-radius-1.soha-radius-members.control.svc:1812",
+        "credentialRef": "secretref:radius-1"
+      }
+    ]
+  },
+  "radiusExecutor": {
+    "enabled": true,
+    "image": {
+      "repository": "example/core",
+      "tag": "candidate"
+    },
+    "baseUrl": "https://core.example.test",
+    "executorId": "radius-executor",
+    "existingTokenSecret": "radius-dedicated-token",
+    "slots": [
+      {
+        "id": "radius-slot",
+        "siteId": "site-1",
+        "nasBindingId": "nas-binding-1",
+        "nasId": "nas-1",
+        "nasName": "Switch",
+        "accessMedium": "wired",
+        "executorId": "radius-executor",
+        "namespace": "control",
+        "name": "soha-radius",
+        "uid": "fixture-not-live-uid",
+        "workloadKind": "StatefulSet",
+        "templateDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "serviceAccount": "soha-radius",
+        "maxReplicas": 2,
+        "members": [
+          {
+            "memberId": "soha-radius-0",
+            "runtimeId": "radius-member:lab-0",
+            "ordinal": 0,
+            "endpoint": "soha-radius-0.soha-radius-members.control.svc:1812",
+            "credentialRef": "secretref:radius-0"
+          },
+          {
+            "memberId": "soha-radius-1",
+            "runtimeId": "radius-member:lab-1",
+            "ordinal": 1,
+            "endpoint": "soha-radius-1.soha-radius-members.control.svc:1812",
+            "credentialRef": "secretref:radius-1"
+          }
+        ],
+        "configurations": [
+          {
+            "material": {
+              "reference": "approved-1",
+              "treeHash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "nasSharedSecretRef": "secretref:nas",
+              "eapServerCertificateRef": "secretref:eap-cert",
+              "eapServerKeyRef": "secretref:eap-key",
+              "eapCARef": "secretref:eap-ca",
+              "hooksAttested": true
+            },
+            "eapServerTrust": {
+              "serverNames": [
+                "radius.example.test"
+              ],
+              "caCertificates": [
+                "-----BEGIN CERTIFICATE-----\nFIXTURE-ONLY-NOT-VALID-X509\n-----END CERTIFICATE-----"
+              ],
+              "wifiSecurity": "wpa2-enterprise",
+              "eapMethod": "ttls",
+              "innerMethod": "pap",
+              "credentialSource": "user-input"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

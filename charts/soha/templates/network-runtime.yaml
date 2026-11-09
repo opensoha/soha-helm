@@ -129,6 +129,29 @@ spec:
       terminationGracePeriodSeconds: 30
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        - name: prepare-runtime-tls
+          image: {{ include "soha.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml (mergeOverwrite (deepCopy .Values.securityContext) (dict "readOnlyRootFilesystem" true)) | nindent 12 }}
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              umask 077
+              mkdir -p /private/tls
+              chmod 0700 /private/tls
+              for key in tls.crt tls.key client-ca.crt; do
+                test -s "/secret-source/$key"
+                cp "/secret-source/$key" "/private/tls/$key"
+                chmod 0600 "/private/tls/$key"
+              done
+          volumeMounts:
+            - name: runtime-tls-source
+              mountPath: /secret-source
+              readOnly: true
+            - name: runtime-tls
+              mountPath: /private
       containers:
         - name: network-control
           image: {{ include "soha.image" . | quote }}
@@ -188,12 +211,16 @@ spec:
               readOnly: true
             - name: runtime-tls
               mountPath: /run/soha-network-control
+              subPath: tls
               readOnly: true
       volumes:
         - name: app-config
           secret:
             secretName: {{ include "soha.fullname" . }}-config
         - name: runtime-tls
+          emptyDir:
+            medium: Memory
+        - name: runtime-tls-source
           secret:
             secretName: {{ .Values.networkRuntime.existingTLSSecret | quote }}
             defaultMode: 0440
@@ -245,6 +272,29 @@ spec:
       terminationGracePeriodSeconds: 30
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        - name: prepare-runtime-tls
+          image: {{ include "soha.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml (mergeOverwrite (deepCopy .Values.securityContext) (dict "readOnlyRootFilesystem" true)) | nindent 12 }}
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              umask 077
+              mkdir -p /private/tls
+              chmod 0700 /private/tls
+              for key in tls.crt tls.key client-ca.crt; do
+                test -s "/secret-source/$key"
+                cp "/secret-source/$key" "/private/tls/$key"
+                chmod 0600 "/private/tls/$key"
+              done
+          volumeMounts:
+            - name: runtime-tls-source
+              mountPath: /secret-source
+              readOnly: true
+            - name: runtime-tls
+              mountPath: /private
       containers:
         - name: ingest
           image: {{ include "soha.image" . | quote }}
@@ -304,12 +354,16 @@ spec:
               readOnly: true
             - name: runtime-tls
               mountPath: /run/soha-ingest
+              subPath: tls
               readOnly: true
       volumes:
         - name: app-config
           secret:
             secretName: {{ include "soha.fullname" . }}-config
         - name: runtime-tls
+          emptyDir:
+            medium: Memory
+        - name: runtime-tls-source
           secret:
             secretName: {{ .Values.networkRuntime.existingTLSSecret | quote }}
             defaultMode: 0440

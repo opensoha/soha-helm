@@ -145,6 +145,7 @@ helm template soha-agent "$root_dir/charts/soha-agent" \
   --set config.controlPlane.enabled=false >"$standalone_agent_render"
 helm template soha-outpost "$root_dir/charts/soha-agent" \
   --set mode=outpost \
+  --set outpostRuntime.accessMode=ReadWriteMany \
   --set replicaCount=2 \
   --set-string config.controlPlane.outpost.trustKeyId=test-key \
   --set-string config.controlPlane.outpost.trustPublicKey=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \
@@ -284,8 +285,9 @@ grep -q 'enabled: true' "$outpost_render"
 grep -q 'protocol_version: "v1"' "$outpost_render"
 grep -q 'path: /readyz' "$outpost_render"
 grep -q 'kind: PodDisruptionBudget' "$outpost_render"
-if grep -q 'kind: ClusterRole' "$outpost_render" || grep -q 'kind: PersistentVolumeClaim' "$outpost_render"; then
-  echo "outpost mode rendered cluster RBAC or persistent state" >&2
+grep -q 'kind: PersistentVolumeClaim' "$outpost_render"
+if grep -q 'kind: ClusterRole' "$outpost_render"; then
+  echo "outpost mode rendered cluster RBAC" >&2
   exit 1
 fi
 grep -q 'kind: ClusterRole' "$agent_render"
@@ -653,3 +655,9 @@ if grep -q 'controllerrevisions\|platform.helm_releases\|platform.resources.' "$
   echo "Outpost inherited workbench permissions" >&2
   exit 1
 fi
+
+python3 "$root_dir/charts/soha/tests/test_outpost_render.py"
+
+python3 "$root_dir/charts/soha/tests/test_proxy_render.py"
+
+python3 "$root_dir/charts/soha/tests/test_radius_render.py"

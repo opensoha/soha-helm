@@ -1,0 +1,180 @@
+{{- if .Values.proxyExecutor.enabled }}
+{{- $cfg := .Values.proxyExecutor }}
+{{- $name := printf "%s-proxy-executor" (include "soha.fullname" . | trunc 46 | trimSuffix "-") }}
+{{- if not (.Capabilities.APIVersions.Has "admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy") }}
+{{- fail "Proxy executor unsupported: admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy is required" }}
+{{- end }}
+{{- if not (.Capabilities.APIVersions.Has "admissionregistration.k8s.io/v1/ValidatingAdmissionPolicyBinding") }}
+{{- fail "Proxy executor unsupported: ValidatingAdmissionPolicyBinding v1 is required" }}
+{{- end }}
+{{- if or (not $cfg.controlPlaneUrl) (not (hasPrefix "https://" $cfg.controlPlaneUrl)) (not $cfg.executorId) (not $cfg.existingTokenSecret) (not $cfg.image.repository) (not $cfg.image.tag) (not $cfg.slots) }}{{ fail "Proxy executor requires HTTPS Core, dedicated credential, image and pinned slots" }}{{ end }}
+{{- if and .Values.outpostExecutor.enabled (eq $cfg.existingTokenSecret .Values.outpostExecutor.existingTokenSecret) }}{{ fail "Proxy and Outpost executor credentials must be independent" }}{{ end }}
+{{- $memberIDs := dict }}
+{{- $runtimeIDs := dict }}
+{{- $seen := dict }}
+{{- range $slot := $cfg.slots }}
+{{- if and $slot.previousOwnerStopped (not $slot.allowAdoption) }}{{ fail "previousOwnerStopped requires explicit allowAdoption" }}{{ end }}
+{{- if and (eq $slot.workloadKind "Deployment") (ne ($slot.maxReplicas | int) 1) }}{{ fail "Deployment supports only one independent member" }}{{ end }}
+{{- if and $.Values.proxyRuntime.enabled (eq $slot.namespace $.Release.Namespace) (eq $slot.name $.Values.proxyRuntime.name) }}
+{{- if ne ($slot.maxReplicas | int) (len $.Values.proxyRuntime.members) }}{{ fail "slot ceiling must match installed member identities" }}{{ end }}
+{{- range $i, $m := $slot.members }}
+{{- $installed := index $.Values.proxyRuntime.members $i }}
+{{- if or (ne $m.instanceId $installed.instanceId) (ne $m.runtimeId $installed.runtimeId) }}{{ fail "slot member must match installed runtime identity" }}{{ end }}
+{{- end }}
+{{- end }}
+{{- if ne $slot.executorId $cfg.executorId }}{{ fail "slot executorId must match installation executorId" }}{{ end }}
+{{- if ne (len $slot.members | int) ($slot.maxReplicas | int) }}{{ fail "Proxy members must cover every approved replica" }}{{ end }}
+{{- range $index, $member := $slot.members }}
+{{- if or (hasKey $memberIDs $member.instanceId) (hasKey $runtimeIDs $member.runtimeId) (ne ($member.ordinal | int) $index) }}{{ fail "Proxy member identities and ordinals must be independent" }}{{ end }}
+{{- if and (eq $slot.workloadKind "StatefulSet") (ne $member.instanceId (printf "%s-%d" $slot.name $index)) }}{{ fail "Proxy instanceId must match StatefulSet pod name" }}{{ end }}
+{{- $_ := set $memberIDs $member.instanceId true }}{{- $_ := set $runtimeIDs $member.runtimeId true }}
+{{- end }}
+{{- $key := printf "%s/%s" $slot.namespace $slot.name }}
+{{- if or (hasKey $seen $key) (hasKey $seen $slot.id) }}{{ fail "duplicate Proxy slot id or target" }}{{ end }}
+{{- $_ := set $seen $key true }}{{- $_ := set $seen $slot.id true }}
+{{- end }}
+{{- $approvedSlots := list }}
+{{- range $slot := $cfg.slots }}{{- $approvedSlots = append $approvedSlots (omit $slot "endpoints") }}{{- end }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $name }}
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}
+  namespace: {{ .Release.Namespace }}
+data:
+  config.json: {{ dict "controlPlaneUrl" $cfg.controlPlaneUrl "executorId" $cfg.executorId "tokenFile" "/var/run/soha-proxy-executor/token" "slots" $approvedSlots | toJson | quote }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+spec:
+  replicas: {{ ternary 1 0 $cfg.start }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ $name }}
+      annotations:
+        checksum/config: {{ $cfg | toJson | sha256sum | quote }}
+    spec:
+      serviceAccountName: {{ $name }}
+      automountServiceAccountToken: true
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: executor
+          image: {{ printf "%s:%s" $cfg.image.repository $cfg.image.tag | quote }}
+          imagePullPolicy: {{ $cfg.image.pullPolicy }}
+          command: ["/app/proxy-runtime-executor"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/soha-proxy-executor
+              readOnly: true
+            - name: token
+              mountPath: /var/run/soha-proxy-executor
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: {{ $name }}
+        - name: token
+          secret:
+            secretName: {{ $cfg.existingTokenSecret | quote }}
+            defaultMode: 0440
+            items:
+              - key: {{ $cfg.tokenKey | quote }}
+                path: token
+{{ range $index, $slot := $cfg.slots }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $name }}-{{ $index }}
+  namespace: {{ $slot.namespace | quote }}
+rules:
+  - apiGroups: [apps]
+    resources: [{{ ternary "statefulsets" "deployments" (eq $slot.workloadKind "StatefulSet") }}]
+    resourceNames: [{{ $slot.name | quote }}]
+    verbs: [get]
+  - apiGroups: [apps]
+    resources: [{{ ternary "statefulsets/scale" "deployments/scale" (eq $slot.workloadKind "StatefulSet") }}]
+    resourceNames: [{{ $slot.name | quote }}]
+    verbs: [get, update]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $name }}-{{ $index }}
+  namespace: {{ $slot.namespace | quote }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $name }}
+    namespace: {{ $.Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $name }}-{{ $index }}
+{{ end }}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: {{ printf "%s-%s" .Release.Namespace $name | trunc 253 | trimSuffix "-" }}
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [apps]
+        apiVersions: [v1]
+        operations: [UPDATE]
+        resources: [deployments/scale, statefulsets/scale]
+  matchConditions:
+    - name: executor-service-account
+      expression: {{ printf "request.userInfo.username == 'system:serviceaccount:%s:%s'" .Release.Namespace $name | quote }}
+  variables:
+    - name: desiredReplicas
+      expression: "has(object.spec) && has(object.spec.replicas) ? object.spec.replicas : 0"
+  validations:
+    {{- $conditions := list }}
+    {{- range $slot := $cfg.slots }}
+    {{- $condition := printf "(request.namespace == %s && request.name == %s && (request.resource.resource == %s) && variables.desiredReplicas >= 0 && variables.desiredReplicas <= %v)" ($slot.namespace | toJson) ($slot.name | toJson) (ternary "statefulsets" "deployments" (eq $slot.workloadKind "StatefulSet") | toJson) $slot.maxReplicas }}
+    {{- $conditions = append $conditions $condition }}
+    {{- end }}
+    - expression: {{ join " || " $conditions | quote }}
+      message: "Proxy executor may scale only installer-approved targets within their replica ceiling"
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: {{ printf "%s-%s" .Release.Namespace $name | trunc 253 | trimSuffix "-" }}
+spec:
+  policyName: {{ printf "%s-%s" .Release.Namespace $name | trunc 253 | trimSuffix "-" }}
+  validationActions: [Deny]
+{{- end }}

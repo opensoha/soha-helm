@@ -65,22 +65,41 @@ These features require updated Core and Agent binaries as well as the chart/inst
 
 ## Identity Outpost mode
 
-The same chart can run the lightweight Proxy forward-auth runtime without Kubernetes API RBAC or persistent state. Use an agent image release that advertises Identity Outpost protocol `v1` and pin the control-plane signing public key:
+The same chart runs the Proxy forward-auth runtime as an independent Service
+and Deployment. Set `mode=outpost`, configure the control-plane endpoint and
+credentials, and pin `config.controlPlane.outpost.trustKeyId`/`trustPublicKey`
+or an overlapping `trustPublicKeys` map. Use an Agent image with Identity Outpost
+protocol v1, durable per-instance state and runtime control v1 support; the
+published default image tag alone is not evidence of those capabilities.
 
-```bash
-helm install soha-outpost opensoha/soha-agent \
-  --namespace soha-outpost \
-  --create-namespace \
-  --set mode=outpost \
-  --set replicaCount=2 \
-  --set-string config.controlPlane.baseUrl=https://soha.example.com \
-  --set-string config.controlPlane.outpost.agentId=production-outpost \
-  --set-string config.controlPlane.outpost.trustKeyId="$SOHA_OUTPOST_KEY_ID" \
-  --set-string config.controlPlane.outpost.trustPublicKey="$SOHA_OUTPOST_PUBLIC_KEY" \
-  --set-string secrets.controlPlaneBearerToken="$SOHA_EXECUTION_RUNNER_TOKEN" \
-  --set-string secrets.agentBearerToken="$SOHA_OUTPOST_AGENT_TOKEN"
-```
+`outpostRuntime.owner=external` is the default: Helm preserves `replicaCount`
+and managed runtime control stays disabled. Explicit `owner=soha` omits
+`spec.replicas` and enables the signed runtime control gate. It does not
+implicitly adopt an external instance or a new slot in Core. Both require
+installer-verified ownership handoff (`allowAdoption=true` and
+`previousOwnerStopped=true`) and a user binding with `explicitAdoption=true`
+before lifecycle start. Unverified slots keep both installation flags false:
+they can be bound and read as external, but cannot be started by Soha. Follow the
+[slot installation and handoff procedure](../soha/OUTPOST.md) before transferring
+ownership; flags never replace stopping an active prior controller.
 
-Outpost mode renders `/readyz` readiness, disables Kubernetes ClusterRole and PVC resources, and creates a PodDisruptionBudget when more than one replica is requested. The ingress controller must call `/api/v1/outpost/forward-auth` with `Authorization: Bearer <agent token>` or `X-Soha-Outpost-Token: <agent token>`.
+Outpost state is persistent. The chart creates a retained PVC by default, or
+uses `outpostRuntime.existingStateClaim`. For one replica, RWO storage is
+supported with `outpostRuntime.accessMode=ReadWriteOnce` (default) and Recreate rollouts;
+the executor slot ceiling must then be 1. Multiple replicas require verified
+RWX storage (`accessMode=ReadWriteMany`). Every Pod UID has its own
+0700 `.soha/outpost` directory on the volume. Container restarts retain it;
+replacement Pods leave old state available for installer retention/recovery.
+This runtime is not stateless. Disabling persistence without an existing claim
+fails rendering. Chart uninstall does not delete the retained Outpost claim.
 
-The control plane and agent do not need matching SemVer values. Both must support Identity Outpost protocol `v1`; the pinned Ed25519 key ID/public key must match the control plane signer. Chart `0.2.8` targets `soha-agent v0.1.12`.
+Outpost mode renders `/readyz` readiness, disables Kubernetes ClusterRole and
+ServiceAccount token automount, and creates a PodDisruptionBudget when more
+than one replica is requested. The ingress controller calls
+`/api/v1/outpost/forward-auth` with `Authorization: Bearer <agent token>` or
+`X-Soha-Outpost-Token: <agent token>`.
+
+The control plane and Agent need compatible protocol versions and trust keys,
+not matching SemVer. Trust-key map changes trigger a Pod rollout; there is no
+configuration hot reload. Add the next public key and roll first, rotate the
+Core signer, then remove the old public key after overlap with another rollout.

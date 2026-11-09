@@ -2,6 +2,138 @@
   "$schema": "http://json-schema.org/schema#",
   "type": "object",
   "properties": {
+    "outpostExecutor": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "start": {
+          "type": "boolean"
+        },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repository": {
+              "type": "string"
+            },
+            "tag": {
+              "type": "string"
+            },
+            "pullPolicy": {
+              "enum": [
+                "Always",
+                "IfNotPresent",
+                "Never"
+              ]
+            }
+          }
+        },
+        "controlPlaneUrl": {
+          "type": "string"
+        },
+        "executorId": {
+          "type": "string"
+        },
+        "existingTokenSecret": {
+          "type": "string"
+        },
+        "tokenKey": {
+          "type": "string",
+          "minLength": 1,
+          "not": {
+            "enum": [
+              "execution-runner-token",
+              "config.yaml"
+            ]
+          }
+        },
+        "signingKey": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "keyId": {
+              "type": "string",
+              "maxLength": 128,
+              "pattern": "^\\S*$"
+            },
+            "existingSecret": {
+              "type": "string"
+            },
+            "key": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "slots": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 50,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "outpostId",
+              "executorId",
+              "uid",
+              "namespace",
+              "name",
+              "templateDigest",
+              "maxReplicas",
+              "allowAdoption",
+              "previousOwnerStopped"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "outpostId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "executorId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "uid": {
+                "type": "string",
+                "minLength": 1
+              },
+              "namespace": {
+                "type": "string",
+                "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+                "maxLength": 63
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+                "maxLength": 63
+              },
+              "templateDigest": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "maxReplicas": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 1000
+              },
+              "allowAdoption": {
+                "type": "boolean"
+              },
+              "previousOwnerStopped": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      }
+    },
     "replicaCount": {
       "type": "integer",
       "minimum": 1
@@ -18,7 +150,11 @@
         },
         "pullPolicy": {
           "type": "string",
-          "enum": ["Always", "IfNotPresent", "Never"]
+          "enum": [
+            "Always",
+            "IfNotPresent",
+            "Never"
+          ]
         }
       }
     },
@@ -41,7 +177,12 @@
           "uniqueItems": true,
           "items": {
             "type": "string",
-            "enum": ["ReadWriteOnce", "ReadOnlyMany", "ReadWriteMany", "ReadWriteOncePod"]
+            "enum": [
+              "ReadWriteOnce",
+              "ReadOnlyMany",
+              "ReadWriteMany",
+              "ReadWriteOncePod"
+            ]
           }
         },
         "size": {
@@ -76,7 +217,13 @@
     "networkRuntime": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["enabled", "existingTLSSecret", "control", "ingest", "ingestPostgres"],
+      "required": [
+        "enabled",
+        "existingTLSSecret",
+        "control",
+        "ingest",
+        "ingestPostgres"
+      ],
       "properties": {
         "enabled": {
           "type": "boolean"
@@ -88,30 +235,61 @@
         "control": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["service"],
+          "required": [
+            "service"
+          ],
           "properties": {
-            "service": { "$ref": "#/definitions/networkRuntimeService" }
+            "service": {
+              "$ref": "#/definitions/networkRuntimeService"
+            }
           }
         },
         "ingest": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["service"],
+          "required": [
+            "service"
+          ],
           "properties": {
-            "service": { "$ref": "#/definitions/networkRuntimeService" }
+            "service": {
+              "$ref": "#/definitions/networkRuntimeService"
+            }
           }
         },
         "ingestPostgres": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["image", "database", "username", "password", "storageClass", "storageSize"],
+          "required": [
+            "image",
+            "database",
+            "username",
+            "password",
+            "storageClass",
+            "storageSize"
+          ],
           "properties": {
-            "image": { "type": "string", "minLength": 1 },
-            "database": { "type": "string", "minLength": 1 },
-            "username": { "type": "string", "minLength": 1 },
-            "password": { "$ref": "#/definitions/initialCredential" },
-            "storageClass": { "type": "string" },
-            "storageSize": { "type": "string", "minLength": 1 }
+            "image": {
+              "type": "string",
+              "minLength": 1
+            },
+            "database": {
+              "type": "string",
+              "minLength": 1
+            },
+            "username": {
+              "type": "string",
+              "minLength": 1
+            },
+            "password": {
+              "$ref": "#/definitions/initialCredential"
+            },
+            "storageClass": {
+              "type": "string"
+            },
+            "storageSize": {
+              "type": "string",
+              "minLength": 1
+            }
           }
         }
       }
@@ -121,11 +299,19 @@
       "properties": {
         "loggerLevel": {
           "type": "string",
-          "enum": ["debug", "info", "warn", "error"]
+          "enum": [
+            "debug",
+            "info",
+            "warn",
+            "error"
+          ]
         },
         "loggerFormat": {
           "type": "string",
-          "enum": ["json", "console"]
+          "enum": [
+            "json",
+            "console"
+          ]
         },
         "maxHeaderBytes": {
           "type": "integer",
@@ -355,6 +541,706 @@
           }
         }
       }
+    },
+    "proxyExecutor": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "start": {
+          "type": "boolean"
+        },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repository": {
+              "type": "string"
+            },
+            "tag": {
+              "type": "string"
+            },
+            "pullPolicy": {
+              "enum": [
+                "Always",
+                "IfNotPresent",
+                "Never"
+              ]
+            }
+          }
+        },
+        "controlPlaneUrl": {
+          "type": "string"
+        },
+        "executorId": {
+          "type": "string"
+        },
+        "existingTokenSecret": {
+          "type": "string"
+        },
+        "tokenKey": {
+          "type": "string",
+          "minLength": 1,
+          "not": {
+            "enum": [
+              "execution-runner-token",
+              "config.yaml"
+            ]
+          }
+        },
+        "slots": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 50,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "executorId",
+              "uid",
+              "namespace",
+              "name",
+              "templateDigest",
+              "maxReplicas",
+              "allowAdoption",
+              "previousOwnerStopped",
+              "proxyId",
+              "workloadKind",
+              "members",
+              "endpoints"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "executorId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "uid": {
+                "type": "string",
+                "minLength": 1
+              },
+              "namespace": {
+                "type": "string",
+                "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+                "maxLength": 63
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+                "maxLength": 63
+              },
+              "templateDigest": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "maxReplicas": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 128
+              },
+              "allowAdoption": {
+                "type": "boolean"
+              },
+              "previousOwnerStopped": {
+                "type": "boolean"
+              },
+              "proxyId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "workloadKind": {
+                "enum": [
+                  "StatefulSet",
+                  "Deployment"
+                ]
+              },
+              "members": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 128,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "instanceId",
+                    "runtimeId",
+                    "ordinal"
+                  ],
+                  "properties": {
+                    "instanceId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "runtimeId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "ordinal": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 127
+                    }
+                  }
+                }
+              },
+              "endpoints": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "endpointId",
+                    "url"
+                  ],
+                  "properties": {
+                    "endpointId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "url": {
+                      "type": "string",
+                      "pattern": "^https://[^/@?#]+$"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "proxyRuntime": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+          "maxLength": 50
+        },
+        "replicas": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 128
+        },
+        "engine": {
+          "enum": [
+            "mihomo",
+            "sing-box",
+            "v2ray"
+          ]
+        },
+        "serviceType": {
+          "enum": [
+            "ClusterIP",
+            "LoadBalancer"
+          ]
+        },
+        "members": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "instanceId",
+              "runtimeId",
+              "existingSecret"
+            ],
+            "properties": {
+              "instanceId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "runtimeId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "existingSecret": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "image": {
+          "type": "string"
+        },
+        "engineBinary": {
+          "type": "string"
+        },
+        "controlUrl": {
+          "type": "string"
+        },
+        "ingestUrl": {
+          "type": "string"
+        },
+        "endpointId": {
+          "type": "string"
+        },
+        "storageClass": {
+          "type": "string"
+        },
+        "storageSize": {
+          "type": "string"
+        },
+        "existingProbeProfilesSecret": {
+          "type": "string"
+        }
+      }
+    },
+    "proxyProbeProfiles": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "instanceId",
+          "profileId"
+        ],
+        "properties": {
+          "instanceId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "profileId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          }
+        }
+      }
+    },
+    "radiusExecutor": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "start": {
+          "type": "boolean"
+        },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repository": {
+              "type": "string"
+            },
+            "tag": {
+              "type": "string"
+            },
+            "pullPolicy": {
+              "enum": [
+                "Always",
+                "IfNotPresent",
+                "Never"
+              ]
+            }
+          }
+        },
+        "executorId": {
+          "type": "string"
+        },
+        "existingTokenSecret": {
+          "type": "string"
+        },
+        "tokenKey": {
+          "type": "string",
+          "minLength": 1,
+          "not": {
+            "enum": [
+              "execution-runner-token",
+              "config.yaml"
+            ]
+          }
+        },
+        "slots": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 50,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "siteId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "nasBindingId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "nasId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "nasName": {
+                "type": "string",
+                "minLength": 1
+              },
+              "accessMedium": {
+                "enum": [
+                  "wired",
+                  "wifi"
+                ]
+              },
+              "ssid": {
+                "type": "string"
+              },
+              "executorId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{1,64}$"
+              },
+              "namespace": {
+                "type": "string",
+                "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+                "maxLength": 63
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+                "maxLength": 63
+              },
+              "uid": {
+                "type": "string",
+                "minLength": 1
+              },
+              "workloadKind": {
+                "enum": [
+                  "StatefulSet",
+                  "Deployment"
+                ]
+              },
+              "templateDigest": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "serviceAccount": {
+                "type": "string",
+                "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+                "maxLength": 63
+              },
+              "maxReplicas": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 128
+              },
+              "members": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 128,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "memberId": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+                    },
+                    "runtimeId": {
+                      "type": "string",
+                      "pattern": "^radius-member:[A-Za-z0-9._:-]+$"
+                    },
+                    "ordinal": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 127
+                    },
+                    "endpoint": {
+                      "type": "string",
+                      "pattern": "^[^/ ]+:[0-9]+$"
+                    },
+                    "credentialRef": {
+                      "type": "string",
+                      "pattern": "^secretref:[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"
+                    }
+                  },
+                  "required": [
+                    "memberId",
+                    "runtimeId",
+                    "ordinal",
+                    "endpoint",
+                    "credentialRef"
+                  ]
+                }
+              },
+              "configurations": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "material": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "reference": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+                        },
+                        "treeHash": {
+                          "type": "string",
+                          "pattern": "^sha256:[a-f0-9]{64}$"
+                        },
+                        "nasSharedSecretRef": {
+                          "type": "string",
+                          "pattern": "^secretref:[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"
+                        },
+                        "eapServerCertificateRef": {
+                          "type": "string",
+                          "pattern": "^secretref:[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"
+                        },
+                        "eapServerKeyRef": {
+                          "type": "string",
+                          "pattern": "^secretref:[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"
+                        },
+                        "eapCARef": {
+                          "type": "string",
+                          "pattern": "^secretref:[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"
+                        },
+                        "hooksAttested": {
+                          "const": true
+                        }
+                      },
+                      "required": [
+                        "reference",
+                        "treeHash",
+                        "nasSharedSecretRef",
+                        "eapServerCertificateRef",
+                        "eapServerKeyRef",
+                        "eapCARef",
+                        "hooksAttested"
+                      ]
+                    },
+                    "eapServerTrust": {
+                      "additionalProperties": false,
+                      "allOf": [
+                        {
+                          "else": {
+                            "not": {
+                              "anyOf": [
+                                {
+                                  "required": [
+                                    "innerMethod"
+                                  ]
+                                },
+                                {
+                                  "required": [
+                                    "credentialSource"
+                                  ]
+                                }
+                              ]
+                            }
+                          },
+                          "if": {
+                            "properties": {
+                              "eapMethod": {
+                                "const": "ttls"
+                              }
+                            },
+                            "required": [
+                              "eapMethod"
+                            ]
+                          },
+                          "then": {
+                            "required": [
+                              "innerMethod",
+                              "credentialSource"
+                            ]
+                          }
+                        }
+                      ],
+                      "properties": {
+                        "caCertificates": {
+                          "items": {
+                            "maxLength": 16384,
+                            "minLength": 64,
+                            "pattern": "^-----BEGIN CERTIFICATE-----",
+                            "type": "string"
+                          },
+                          "maxItems": 8,
+                          "minItems": 1,
+                          "type": "array",
+                          "uniqueItems": true
+                        },
+                        "credentialSource": {
+                          "const": "user-input",
+                          "type": "string"
+                        },
+                        "eapMethod": {
+                          "default": "tls",
+                          "enum": [
+                            "tls",
+                            "ttls"
+                          ],
+                          "type": "string"
+                        },
+                        "innerMethod": {
+                          "const": "pap",
+                          "type": "string"
+                        },
+                        "serverNames": {
+                          "items": {
+                            "maxLength": 253,
+                            "minLength": 1,
+                            "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?$",
+                            "type": "string"
+                          },
+                          "maxItems": 16,
+                          "minItems": 1,
+                          "type": "array",
+                          "uniqueItems": true
+                        },
+                        "wifiSecurity": {
+                          "enum": [
+                            "wpa2-enterprise",
+                            "wpa3-enterprise"
+                          ],
+                          "type": "string",
+                          "x-enum-varnames": [
+                            "NetworkEAPServerTrustWifiSecurityWpa2Enterprise",
+                            "NetworkEAPServerTrustWifiSecurityWpa3Enterprise"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "serverNames",
+                        "caCertificates",
+                        "wifiSecurity"
+                      ],
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "material",
+                    "eapServerTrust"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "id",
+              "siteId",
+              "nasBindingId",
+              "nasId",
+              "nasName",
+              "accessMedium",
+              "executorId",
+              "namespace",
+              "name",
+              "uid",
+              "workloadKind",
+              "templateDigest",
+              "serviceAccount",
+              "maxReplicas",
+              "members",
+              "configurations"
+            ]
+          }
+        },
+        "baseUrl": {
+          "type": "string"
+        }
+      }
+    },
+    "radiusRuntime": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+          "maxLength": 63
+        },
+        "serviceAccount": {
+          "type": "string",
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+          "maxLength": 63
+        },
+        "replicas": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 128
+        },
+        "image": {
+          "type": "string"
+        },
+        "storageClass": {
+          "type": "string"
+        },
+        "storageSize": {
+          "type": "string",
+          "minLength": 1
+        },
+        "members": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "memberId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+              },
+              "runtimeId": {
+                "type": "string",
+                "pattern": "^radius-member:[A-Za-z0-9._:-]+$"
+              },
+              "ordinal": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 127
+              },
+              "endpoint": {
+                "type": "string",
+                "pattern": "^[^/ ]+:[0-9]+$"
+              },
+              "credentialRef": {
+                "type": "string",
+                "pattern": "^secretref:[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"
+              }
+            },
+            "required": [
+              "memberId",
+              "runtimeId",
+              "ordinal",
+              "endpoint",
+              "credentialRef"
+            ]
+          }
+        }
+      },
+      "required": [
+        "enabled",
+        "name",
+        "serviceAccount",
+        "replicas",
+        "image",
+        "storageClass",
+        "storageSize",
+        "members"
+      ]
     }
   },
   "allOf": [
@@ -367,10 +1253,14 @@
                 "const": false
               }
             },
-            "required": ["enabled"]
+            "required": [
+              "enabled"
+            ]
           }
         },
-        "required": ["postgres"]
+        "required": [
+          "postgres"
+        ]
       },
       "then": {
         "properties": {
@@ -381,7 +1271,9 @@
                 "minLength": 1
               }
             },
-            "required": ["host"]
+            "required": [
+              "host"
+            ]
           }
         }
       }
@@ -395,10 +1287,14 @@
                 "const": true
               }
             },
-            "required": ["enabled"]
+            "required": [
+              "enabled"
+            ]
           }
         },
-        "required": ["postgres"]
+        "required": [
+          "postgres"
+        ]
       },
       "then": {
         "properties": {
@@ -408,7 +1304,9 @@
                 "const": 5432
               }
             },
-            "required": ["port"]
+            "required": [
+              "port"
+            ]
           }
         }
       }
@@ -424,13 +1322,19 @@
                     "const": true
                   }
                 },
-                "required": ["enabled"]
+                "required": [
+                  "enabled"
+                ]
               }
             },
-            "required": ["networkIngestQuery"]
+            "required": [
+              "networkIngestQuery"
+            ]
           }
         },
-        "required": ["config"]
+        "required": [
+          "config"
+        ]
       },
       "then": {
         "properties": {
@@ -462,18 +1366,121 @@
         "properties": {
           "networkRuntime": {
             "properties": {
-              "enabled": { "const": true }
+              "enabled": {
+                "const": true
+              }
             },
-            "required": ["enabled"]
+            "required": [
+              "enabled"
+            ]
           }
         },
-        "required": ["networkRuntime"]
+        "required": [
+          "networkRuntime"
+        ]
       },
       "then": {
         "properties": {
           "networkRuntime": {
             "properties": {
-              "existingTLSSecret": { "type": "string", "minLength": 1 }
+              "existingTLSSecret": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "outpostExecutor": {
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            },
+            "required": [
+              "enabled"
+            ]
+          }
+        },
+        "required": [
+          "outpostExecutor"
+        ]
+      },
+      "then": {
+        "properties": {
+          "podSecurityContext": {
+            "required": [
+              "fsGroup"
+            ],
+            "properties": {
+              "fsGroup": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          },
+          "outpostExecutor": {
+            "required": [
+              "image",
+              "controlPlaneUrl",
+              "executorId",
+              "existingTokenSecret",
+              "signingKey",
+              "slots"
+            ],
+            "properties": {
+              "image": {
+                "required": [
+                  "repository",
+                  "tag"
+                ],
+                "properties": {
+                  "repository": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "tag": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              },
+              "controlPlaneUrl": {
+                "type": "string",
+                "pattern": "^https://[^/]+.*$"
+              },
+              "executorId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "existingTokenSecret": {
+                "type": "string",
+                "minLength": 1
+              },
+              "signingKey": {
+                "required": [
+                  "keyId",
+                  "existingSecret",
+                  "key"
+                ],
+                "properties": {
+                  "keyId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "existingSecret": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              },
+              "slots": {
+                "minItems": 1
+              }
             }
           }
         }
@@ -484,11 +1491,18 @@
     "networkRuntimeService": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["type", "port"],
+      "required": [
+        "type",
+        "port"
+      ],
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["ClusterIP", "NodePort", "LoadBalancer"]
+          "enum": [
+            "ClusterIP",
+            "NodePort",
+            "LoadBalancer"
+          ]
         },
         "port": {
           "type": "integer",

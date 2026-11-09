@@ -167,6 +167,115 @@ logger:
   format: {{ .Values.config.loggerFormat | quote }}
 runtime:
   execution_runner_token: {{ .Values.config.runtime.executionRunnerToken | quote }}
+{{- if .Values.proxyProbeProfiles }}
+  proxy_probe_profiles:
+{{- range .Values.proxyProbeProfiles }}
+    - instance_id: {{ .instanceId | quote }}
+      profile_id: {{ .profileId | quote }}
+{{- end }}
+{{- end }}
+{{- if .Values.outpostExecutor.enabled }}
+  outpost_runtime_executors:
+    - executor_id: {{ .Values.outpostExecutor.executorId | quote }}
+      token_file: /var/run/soha-outpost-executor/token
+  outpost_slots:
+{{- range .Values.outpostExecutor.slots }}
+    - id: {{ .id | quote }}
+      outpost_id: {{ .outpostId | quote }}
+      executor_id: {{ .executorId | quote }}
+      namespace: {{ .namespace | quote }}
+      name: {{ .name | quote }}
+      uid: {{ .uid | quote }}
+      template_digest: {{ .templateDigest | quote }}
+      max_replicas: {{ .maxReplicas }}
+      allow_adoption: {{ .allowAdoption }}
+      previous_owner_stopped: {{ .previousOwnerStopped }}
+{{- end }}
+{{- end }}
+{{- if .Values.proxyExecutor.enabled }}
+  proxy_runtime_executors:
+    - executor_id: {{ .Values.proxyExecutor.executorId | quote }}
+      token_file: /var/run/soha-proxy-executor/token
+  proxy_slots:
+{{- range .Values.proxyExecutor.slots }}
+    - id: {{ .id | quote }}
+      proxy_id: {{ .proxyId | quote }}
+      executor_id: {{ .executorId | quote }}
+      workload_kind: {{ .workloadKind | quote }}
+      namespace: {{ .namespace | quote }}
+      name: {{ .name | quote }}
+      uid: {{ .uid | quote }}
+      template_digest: {{ .templateDigest | quote }}
+      max_replicas: {{ .maxReplicas }}
+      allow_adoption: {{ .allowAdoption }}
+      previous_owner_stopped: {{ .previousOwnerStopped }}
+      members:
+{{- range .members }}
+        - instance_id: {{ .instanceId | quote }}
+          runtime_id: {{ .runtimeId | quote }}
+          ordinal: {{ .ordinal }}
+{{- end }}
+      endpoints:
+{{- range .endpoints }}
+        - endpoint_id: {{ .endpointId | quote }}
+          url: {{ .url | quote }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- if .Values.radiusExecutor.enabled }}
+  radius_runtime_executors:
+    - executor_id: {{ .Values.radiusExecutor.executorId | quote }}
+      token_file: /var/run/soha-radius-executor/token
+  radius_slots:
+{{- range .Values.radiusExecutor.slots }}
+    - id: {{ .id | quote }}
+      site_id: {{ .siteId | quote }}
+      nas_binding_id: {{ .nasBindingId | quote }}
+      nas_id: {{ .nasId | quote }}
+      nas_name: {{ .nasName | quote }}
+      access_medium: {{ .accessMedium | quote }}
+      ssid: {{ .ssid | quote }}
+      executor_id: {{ .executorId | quote }}
+      namespace: {{ .namespace | quote }}
+      name: {{ .name | quote }}
+      uid: {{ .uid | quote }}
+      workload_kind: {{ .workloadKind | quote }}
+      template_digest: {{ .templateDigest | quote }}
+      service_account: {{ .serviceAccount | quote }}
+      max_replicas: {{ .maxReplicas }}
+      members:
+{{- range .members }}
+        - member_id: {{ .memberId | quote }}
+          runtime_id: {{ .runtimeId | quote }}
+          ordinal: {{ .ordinal }}
+          endpoint: {{ .endpoint | quote }}
+          credential_ref: {{ .credentialRef | quote }}
+{{- end }}
+      configurations:
+{{- range .configurations }}
+        - reference: {{ .material.reference | quote }}
+          tree_hash: {{ .material.treeHash | quote }}
+          nas_shared_secret_ref: {{ .material.nasSharedSecretRef | quote }}
+          eap_server_certificate_ref: {{ .material.eapServerCertificateRef | quote }}
+          eap_server_key_ref: {{ .material.eapServerKeyRef | quote }}
+          eap_ca_ref: {{ .material.eapCARef | quote }}
+          hooks_attested: {{ .material.hooksAttested }}
+          eap_server_trust:
+            server_names: {{ .eapServerTrust.serverNames | toJson }}
+            ca_certificates: {{ .eapServerTrust.caCertificates | toJson }}
+            wifi_security: {{ .eapServerTrust.wifiSecurity | toJson }}
+{{- if hasKey .eapServerTrust "eapMethod" }}
+            eap_method: {{ .eapServerTrust.eapMethod | toJson }}
+{{- end }}
+{{- if hasKey .eapServerTrust "innerMethod" }}
+            inner_method: {{ .eapServerTrust.innerMethod | toJson }}
+{{- end }}
+{{- if hasKey .eapServerTrust "credentialSource" }}
+            credential_source: {{ .eapServerTrust.credentialSource | toJson }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
 database:
   driver: postgres
   host: {{ include "soha.postgresHost" . | quote }}
@@ -280,6 +389,10 @@ modules:
 security:
   credential_encryption_key: {{ include "soha.credentialEncryptionKey" . | quote }}
   secret_provider: {{ .Values.config.security.secretProvider | quote }}
+{{- if .Values.outpostExecutor.enabled }}
+  outpost_signing_key_id: {{ .Values.outpostExecutor.signingKey.keyId | quote }}
+  outpost_signing_private_key: "${SOHA_OUTPOST_SIGNING_PRIVATE_KEY}"
+{{- end }}
 bootstrap:
   seed_defaults: {{ .Values.config.seedDefaults }}
 kubernetes:

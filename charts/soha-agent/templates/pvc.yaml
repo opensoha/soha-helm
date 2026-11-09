@@ -1,13 +1,17 @@
-{{- if and .Values.persistence.enabled (ne .Values.mode "outpost") }}
+{{- if and .Values.persistence.enabled (not (and (eq .Values.mode "outpost") .Values.outpostRuntime.existingStateClaim)) }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: {{ include "soha-agent.fullname" . }}-state
+{{- if eq .Values.mode "outpost" }}
+  annotations:
+    helm.sh/resource-policy: keep
+{{- end }}
   labels:
     {{- include "soha-agent.labels" . | nindent 4 }}
 spec:
   accessModes:
-    - ReadWriteOnce
+    - {{ ternary .Values.outpostRuntime.accessMode "ReadWriteOnce" (eq .Values.mode "outpost") }}
   {{- if .Values.persistence.storageClassName }}
   storageClassName: {{ .Values.persistence.storageClassName | quote }}
   {{- end }}

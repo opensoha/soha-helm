@@ -24,8 +24,9 @@ spec:
       {{- end }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- if .Values.postgres.enabled }}
+      {{- if or .Values.postgres.enabled .Values.config.networkIngestQuery.enabled }}
       initContainers:
+        {{- if .Values.postgres.enabled }}
         - name: wait-for-postgres
           image: {{ .Values.postgres.image | quote }}
           securityContext:
@@ -36,6 +37,31 @@ spec:
             - {{ printf "--port=%v" .Values.postgres.port | quote }}
             - {{ printf "--username=%s" .Values.postgres.username | quote }}
             - {{ printf "--dbname=%s" .Values.postgres.database | quote }}
+        {{- end }}
+        {{- if .Values.config.networkIngestQuery.enabled }}
+        - name: prepare-query-tls
+          image: {{ include "soha.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml (mergeOverwrite (deepCopy .Values.securityContext) (dict "readOnlyRootFilesystem" true)) | nindent 12 }}
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              umask 077
+              mkdir -p /private/query
+              chmod 0700 /private/query
+              for key in ca.crt tls.crt tls.key; do
+                test -s "/secret-source/$key"
+                cp "/secret-source/$key" "/private/query/$key"
+                chmod 0600 "/private/query/$key"
+              done
+          volumeMounts:
+            - name: network-ingest-query-tls-source
+              mountPath: /secret-source
+              readOnly: true
+            - name: network-ingest-query-tls
+              mountPath: /private
+        {{- end }}
       {{- end }}
       containers:
         - name: soha
@@ -46,6 +72,13 @@ spec:
           env:
             - name: SOHA_CONFIG_FILE
               value: /app/configs/config.yaml
+            {{- if .Values.outpostExecutor.enabled }}
+            - name: SOHA_OUTPOST_SIGNING_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.outpostExecutor.signingKey.existingSecret | quote }}
+                  key: {{ .Values.outpostExecutor.signingKey.key | quote }}
+            {{- end }}
           ports:
             - containerPort: 8080
               name: http
@@ -60,13 +93,29 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
+            {{- if .Values.proxyExecutor.enabled }}
+            - name: proxy-executor-token
+              mountPath: /var/run/soha-proxy-executor
+              readOnly: true
+            {{- end }}
+            {{- if .Values.radiusExecutor.enabled }}
+            - name: radius-executor-token
+              mountPath: /var/run/soha-radius-executor
+              readOnly: true
+            {{- end }}
             - name: app-config
               mountPath: /app/configs/config.yaml
               subPath: config.yaml
               readOnly: true
+            {{- if .Values.outpostExecutor.enabled }}
+            - name: outpost-executor-token
+              mountPath: /var/run/soha-outpost-executor
+              readOnly: true
+            {{- end }}
             {{- if .Values.config.networkIngestQuery.enabled }}
             - name: network-ingest-query-tls
               mountPath: /run/soha-network-ingest-query
+              subPath: query
               readOnly: true
             {{- end }}
             {{- if .Values.persistence.enabled }}
@@ -74,11 +123,41 @@ spec:
               mountPath: /app/data
             {{- end }}
       volumes:
+        {{- if .Values.proxyExecutor.enabled }}
+        - name: proxy-executor-token
+          secret:
+            secretName: {{ .Values.proxyExecutor.existingTokenSecret | quote }}
+            defaultMode: 0440
+            items:
+              - key: {{ .Values.proxyExecutor.tokenKey | quote }}
+                path: token
+        {{- end }}
+        {{- if .Values.radiusExecutor.enabled }}
+        - name: radius-executor-token
+          secret:
+            secretName: {{ .Values.radiusExecutor.existingTokenSecret | quote }}
+            defaultMode: 0440
+            items:
+              - key: {{ .Values.radiusExecutor.tokenKey | quote }}
+                path: token
+        {{- end }}
         - name: app-config
           secret:
             secretName: {{ include "soha.fullname" . }}-config
+        {{- if .Values.outpostExecutor.enabled }}
+        - name: outpost-executor-token
+          secret:
+            secretName: {{ .Values.outpostExecutor.existingTokenSecret | quote }}
+            defaultMode: 0440
+            items:
+              - key: {{ .Values.outpostExecutor.tokenKey | quote }}
+                path: token
+        {{- end }}
         {{- if .Values.config.networkIngestQuery.enabled }}
         - name: network-ingest-query-tls
+          emptyDir:
+            medium: Memory
+        - name: network-ingest-query-tls-source
           secret:
             secretName: {{ .Values.config.networkIngestQuery.existingSecret | quote }}
             defaultMode: 0440

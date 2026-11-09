@@ -1,0 +1,177 @@
+{{- if .Values.radiusExecutor.enabled }}
+{{- $cfg := .Values.radiusExecutor }}
+{{- $name := printf "%s-radius-executor" (include "soha.fullname" . | trunc 46 | trimSuffix "-") }}
+{{- if not (.Capabilities.APIVersions.Has "admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy") }}
+{{- fail "RADIUS executor unsupported: admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy is required" }}
+{{- end }}
+{{- if not (.Capabilities.APIVersions.Has "admissionregistration.k8s.io/v1/ValidatingAdmissionPolicyBinding") }}
+{{- fail "RADIUS executor unsupported: ValidatingAdmissionPolicyBinding v1 is required" }}
+{{- end }}
+{{- if or (not $cfg.baseUrl) (not (hasPrefix "https://" $cfg.baseUrl)) (not $cfg.executorId) (not $cfg.existingTokenSecret) (not $cfg.image.repository) (not $cfg.image.tag) (not $cfg.slots) }}{{ fail "RADIUS executor requires HTTPS Core, dedicated credential, image and pinned slots" }}{{ end }}
+{{- if and .Values.outpostExecutor.enabled (eq $cfg.existingTokenSecret .Values.outpostExecutor.existingTokenSecret) }}{{ fail "RADIUS and Outpost executor credentials must be independent" }}{{ end }}
+{{- if and .Values.proxyExecutor.enabled (eq $cfg.existingTokenSecret .Values.proxyExecutor.existingTokenSecret) }}{{ fail "RADIUS and Proxy executor credentials must be independent" }}{{ end }}
+{{- if eq $cfg.existingTokenSecret (printf "%s-config" (include "soha.fullname" .)) }}{{ fail "RADIUS executor must not reuse generic Core credentials" }}{{ end }}
+{{- if and .Values.outpostExecutor.enabled (eq $cfg.existingTokenSecret .Values.outpostExecutor.signingKey.existingSecret) }}{{ fail "RADIUS executor must not reuse Outpost signing credentials" }}{{ end }}
+{{- if and .Values.radiusRuntime.enabled (eq .Values.radiusRuntime.serviceAccount $name) }}{{ fail "RADIUS runtime and executor service accounts must be independent" }}{{ end }}
+{{- $memberIDs := dict }}{{- $runtimeIDs := dict }}{{- $endpoints := dict }}{{- $credentials := dict }}{{- $seen := dict }}
+{{- range $slot := $cfg.slots }}
+{{- if ne $slot.executorId $cfg.executorId }}{{ fail "slot executorId must match RADIUS installation executorId" }}{{ end }}
+{{- if or (ne (len $slot.members | int) ($slot.maxReplicas | int)) (and (eq $slot.workloadKind "Deployment") (ne ($slot.maxReplicas | int) 1)) }}{{ fail "RADIUS members must cover every approved replica" }}{{ end }}
+{{- if and (eq $slot.accessMedium "wifi") (not $slot.ssid) }}{{ fail "WiFi RADIUS slot requires SSID" }}{{ end }}
+{{- $key := printf "%s/%s" $slot.namespace $slot.name }}
+{{- if or (hasKey $seen $key) (hasKey $seen $slot.id) (hasKey $seen $slot.uid) }}{{ fail "duplicate RADIUS slot id, UID or target" }}{{ end }}
+{{- $_ := set $seen $key true }}{{- $_ := set $seen $slot.id true }}{{- $_ := set $seen $slot.uid true }}
+{{- range $index, $member := $slot.members }}
+{{- if or (hasKey $memberIDs $member.memberId) (hasKey $runtimeIDs $member.runtimeId) (hasKey $endpoints $member.endpoint) (hasKey $credentials $member.credentialRef) (ne ($member.ordinal | int) $index) }}{{ fail "RADIUS member identities, endpoints and ordinals must be independent" }}{{ end }}
+{{- if and (eq $slot.workloadKind "StatefulSet") (ne $member.memberId (printf "%s-%d" $slot.name $index)) }}{{ fail "RADIUS memberId must match StatefulSet pod name" }}{{ end }}
+{{- $_ := set $memberIDs $member.memberId true }}{{- $_ := set $runtimeIDs $member.runtimeId true }}{{- $_ := set $endpoints $member.endpoint true }}{{- $_ := set $credentials $member.credentialRef true }}
+{{- end }}
+{{- if and $.Values.radiusRuntime.enabled (eq $slot.namespace $.Release.Namespace) (eq $slot.name $.Values.radiusRuntime.name) }}
+{{- if or (ne $slot.workloadKind "StatefulSet") (ne $slot.serviceAccount $.Values.radiusRuntime.serviceAccount) (ne ($slot.maxReplicas | int) (len $.Values.radiusRuntime.members)) (ne ($slot.members | toJson) ($.Values.radiusRuntime.members | toJson)) }}{{ fail "RADIUS slot must match installed runtime members, ceiling and service account" }}{{ end }}
+{{- end }}
+{{- end }}
+{{- $approvedSlots := $cfg.slots }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $name }}
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}
+  namespace: {{ .Release.Namespace }}
+data:
+  config.json: {{ dict "baseUrl" $cfg.baseUrl "executorId" $cfg.executorId "tokenFile" "/var/run/soha-radius-executor/token" "slots" $approvedSlots | toJson | quote }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+spec:
+  replicas: {{ ternary 1 0 $cfg.start }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ $name }}
+      annotations:
+        checksum/config: {{ $cfg | toJson | sha256sum | quote }}
+    spec:
+      serviceAccountName: {{ $name }}
+      automountServiceAccountToken: true
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: executor
+          image: {{ printf "%s:%s" $cfg.image.repository $cfg.image.tag | quote }}
+          imagePullPolicy: {{ $cfg.image.pullPolicy }}
+          command: ["/app/radius-runtime-executor"]
+          args: ["--config", "/etc/soha-radius-executor/config.json"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/soha-radius-executor
+              readOnly: true
+            - name: token
+              mountPath: /var/run/soha-radius-executor
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: {{ $name }}
+        - name: token
+          secret:
+            secretName: {{ $cfg.existingTokenSecret | quote }}
+            defaultMode: 0440
+            items:
+              - key: {{ $cfg.tokenKey | quote }}
+                path: token
+{{ range $index, $slot := $cfg.slots }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $name }}-{{ $index }}
+  namespace: {{ $slot.namespace | quote }}
+rules:
+  - apiGroups: [apps]
+    resources: [{{ ternary "statefulsets" "deployments" (eq $slot.workloadKind "StatefulSet") }}]
+    resourceNames: [{{ $slot.name | quote }}]
+    verbs: [get]
+  - apiGroups: [apps]
+    resources: [{{ ternary "statefulsets/scale" "deployments/scale" (eq $slot.workloadKind "StatefulSet") }}]
+    resourceNames: [{{ $slot.name | quote }}]
+    verbs: [get, update]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $name }}-{{ $index }}
+  namespace: {{ $slot.namespace | quote }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $name }}
+    namespace: {{ $.Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $name }}-{{ $index }}
+{{ end }}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: {{ printf "%s-%s" .Release.Namespace $name | trunc 253 | trimSuffix "-" }}
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [apps]
+        apiVersions: [v1]
+        operations: [UPDATE]
+        resources: [deployments/scale, statefulsets/scale]
+  matchConditions:
+    - name: executor-service-account
+      expression: {{ printf "request.userInfo.username == 'system:serviceaccount:%s:%s'" .Release.Namespace $name | quote }}
+  variables:
+    - name: desiredReplicas
+      expression: "has(object.spec) && has(object.spec.replicas) ? object.spec.replicas : 0"
+  validations:
+    {{- $conditions := list }}
+    {{- range $slot := $cfg.slots }}
+    {{- $condition := printf "(request.namespace == %s && request.name == %s && (request.resource.resource == %s) && variables.desiredReplicas >= 0 && variables.desiredReplicas <= %v)" ($slot.namespace | toJson) ($slot.name | toJson) (ternary "statefulsets" "deployments" (eq $slot.workloadKind "StatefulSet") | toJson) $slot.maxReplicas }}
+    {{- $conditions = append $conditions $condition }}
+    {{- end }}
+    - expression: {{ join " || " $conditions | quote }}
+      message: "RADIUS executor may scale only installer-approved targets within their replica ceiling"
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: {{ printf "%s-%s" .Release.Namespace $name | trunc 253 | trimSuffix "-" }}
+spec:
+  policyName: {{ printf "%s-%s" .Release.Namespace $name | trunc 253 | trimSuffix "-" }}
+  validationActions: [Deny]
+{{- end }}

@@ -5,7 +5,13 @@ metadata:
   labels:
     {{- include "soha-agent.labels" . | nindent 4 }}
 spec:
+{{- if or (ne .Values.mode "outpost") (eq .Values.outpostRuntime.owner "external") }}
   replicas: {{ .Values.replicaCount }}
+{{- end }}
+{{- if and (eq .Values.mode "outpost") (eq .Values.outpostRuntime.accessMode "ReadWriteOnce") }}
+  strategy:
+    type: Recreate
+{{- end }}
   selector:
     matchLabels:
       {{- include "soha-agent.selectorLabels" . | nindent 6 }}
@@ -32,10 +38,21 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
+{{- if eq .Values.mode "outpost" }}
+          command: ["/bin/sh", "-ec"]
+          args:
+            - 'umask 077; mkdir -p "/var/lib/soha-agent/instances/$SOHA_AGENT_CONTROL_PLANE_OUTPOST_INSTANCE_ID/.soha/outpost"; chmod 0700 "/var/lib/soha-agent/instances/$SOHA_AGENT_CONTROL_PLANE_OUTPOST_INSTANCE_ID/.soha/outpost"; export SOHA_AGENT_CONTROL_PLANE_OUTPOST_STATE_DIR="/var/lib/soha-agent/instances/$SOHA_AGENT_CONTROL_PLANE_OUTPOST_INSTANCE_ID/.soha/outpost"; exec /app/soha-agent'
+{{- end }}
           ports:
             - name: http
               containerPort: 18080
           env:
+{{- if eq .Values.mode "outpost" }}
+            - name: SOHA_AGENT_CONTROL_PLANE_OUTPOST_INSTANCE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+{{- end }}
             - name: SOHA_AGENT_CONFIG_FILE
               value: /etc/soha-agent/agent.config.yaml
 {{- if .Values.config.controlPlane.enabled }}
@@ -89,9 +106,9 @@ spec:
           configMap:
             name: {{ include "soha-agent.fullname" . }}-config
         - name: state
-          {{- if and .Values.persistence.enabled (ne .Values.mode "outpost") }}
+          {{- if or .Values.persistence.enabled (eq .Values.mode "outpost") }}
           persistentVolumeClaim:
-            claimName: {{ include "soha-agent.fullname" . }}-state
+            claimName: {{ if and (eq .Values.mode "outpost") .Values.outpostRuntime.existingStateClaim }}{{ .Values.outpostRuntime.existingStateClaim | quote }}{{ else }}{{ include "soha-agent.fullname" . }}-state{{ end }}
           {{- else }}
           emptyDir: {}
           {{- end }}

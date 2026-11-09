@@ -4,6 +4,11 @@ image:
   pullPolicy: IfNotPresent
 
 mode: agent
+
+outpostRuntime:
+  owner: external
+  existingStateClaim: ""
+  accessMode: ReadWriteOnce
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
@@ -71,6 +76,7 @@ config:
       protocolVersion: v1
       trustKeyId: ""
       trustPublicKey: ""
+      trustPublicKeys: {}
       pollInterval: 5s
       heartbeatInterval: 15s
   kubernetes:

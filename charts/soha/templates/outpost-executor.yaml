@@ -1,0 +1,157 @@
+{{- if .Values.outpostExecutor.enabled }}
+{{- $cfg := .Values.outpostExecutor }}
+{{- $name := printf "%s-outpost-executor" (include "soha.fullname" . | trunc 46 | trimSuffix "-") }}
+{{- if not (.Capabilities.APIVersions.Has "admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy") }}
+{{- fail "Outpost executor unsupported: admissionregistration.k8s.io/v1/ValidatingAdmissionPolicy is required" }}
+{{- end }}
+{{- if not (.Capabilities.APIVersions.Has "admissionregistration.k8s.io/v1/ValidatingAdmissionPolicyBinding") }}
+{{- fail "Outpost executor unsupported: ValidatingAdmissionPolicyBinding v1 is required" }}
+{{- end }}
+{{- $seen := dict }}
+{{- range $slot := $cfg.slots }}
+{{- if ne $slot.executorId $cfg.executorId }}{{ fail "slot executorId must match installation executorId" }}{{ end }}
+{{- $key := printf "%s/%s" $slot.namespace $slot.name }}
+{{- if or (hasKey $seen $key) (hasKey $seen $slot.id) }}{{ fail "duplicate Outpost slot id or target" }}{{ end }}
+{{- $_ := set $seen $key true }}{{- $_ := set $seen $slot.id true }}
+{{- end }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $name }}
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}
+  namespace: {{ .Release.Namespace }}
+data:
+  config.json: {{ dict "controlPlaneUrl" $cfg.controlPlaneUrl "executorId" $cfg.executorId "tokenFile" "/var/run/soha-outpost-executor/token" "slots" $cfg.slots | toJson | quote }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+spec:
+  replicas: {{ ternary 1 0 $cfg.start }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ $name }}
+      annotations:
+        checksum/config: {{ $cfg | toJson | sha256sum | quote }}
+    spec:
+      serviceAccountName: {{ $name }}
+      automountServiceAccountToken: true
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: executor
+          image: {{ printf "%s:%s" $cfg.image.repository $cfg.image.tag | quote }}
+          imagePullPolicy: {{ $cfg.image.pullPolicy }}
+          command: ["/app/outpost-runtime-executor"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/soha-outpost-executor
+              readOnly: true
+            - name: token
+              mountPath: /var/run/soha-outpost-executor
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: {{ $name }}
+        - name: token
+          secret:
+            secretName: {{ $cfg.existingTokenSecret | quote }}
+            defaultMode: 0440
+            items:
+              - key: {{ $cfg.tokenKey | quote }}
+                path: token
+{{ range $index, $slot := $cfg.slots }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $name }}-{{ $index }}
+  namespace: {{ $slot.namespace | quote }}
+rules:
+  - apiGroups: [apps]
+    resources: [deployments]
+    resourceNames: [{{ $slot.name | quote }}]
+    verbs: [get]
+  - apiGroups: [apps]
+    resources: [deployments/scale]
+    resourceNames: [{{ $slot.name | quote }}]
+    verbs: [get, update]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $name }}-{{ $index }}
+  namespace: {{ $slot.namespace | quote }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $name }}
+    namespace: {{ $.Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $name }}-{{ $index }}
+{{ end }}
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: {{ printf "%s-%s" .Release.Namespace $name | trunc 253 | trimSuffix "-" }}
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [apps]
+        apiVersions: [v1]
+        operations: [UPDATE]
+        resources: [deployments/scale]
+  matchConditions:
+    - name: executor-service-account
+      expression: {{ printf "request.userInfo.username == 'system:serviceaccount:%s:%s'" .Release.Namespace $name | quote }}
+  variables:
+    - name: desiredReplicas
+      expression: "has(object.spec) && has(object.spec.replicas) ? object.spec.replicas : 0"
+  validations:
+    - expression: >-
+        {{- range $index, $slot := $cfg.slots }}
+        {{ if $index }}||{{ end }} (request.namespace == {{ $slot.namespace | toJson }} && request.name == {{ $slot.name | toJson }} && variables.desiredReplicas >= 0 && variables.desiredReplicas <= {{ $slot.maxReplicas }})
+        {{- end }}
+      message: "Outpost executor may scale only installer-approved targets within their replica ceiling"
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: {{ printf "%s-%s" .Release.Namespace $name | trunc 253 | trimSuffix "-" }}
+spec:
+  policyName: {{ printf "%s-%s" .Release.Namespace $name | trunc 253 | trimSuffix "-" }}
+  validationActions: [Deny]
+{{- end }}

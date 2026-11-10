@@ -11,6 +11,8 @@ Enabling a chart block creates its optional service and sets the matching Core
 startup-only environment entries. Core mounts only the matching `service-token`
 key from existing Secrets. It receives neither Hindsight DB credentials nor its
 Gateway PAT. Runtime failures remain bootstrap/end-to-end acceptance concerns.
+Set the Core image to the validated build for the selected runtime before
+enabling it. See [version and release order](README.md#optional-dsh-and-hindsight-runtimes).
 
 For dsh, provide a validated image built with Agent `deploy/Dockerfile.dsh-runtime`,
 an existing Secret with `service-token` (32+ characters, shared with Core).
@@ -22,6 +24,10 @@ Empty gatewayURL/callbackURL derive the Core Service's
 reachable from Node directly, not via an Agent cluster proxy.
 One replica owns one PVC; Recreate prevents overlapping writers. The journal is
 created beneath the fsGroup-writable PVC root so UID 1000 owns the directory.
+Follow [journal storage](README.md#journal-storage) for a pre-fix upgrade,
+disable, re-enable, rollback, or reinstall. Task124 can mount a versioned
+[hosted asset registry, Skill files and HTTP MCP credentials](README.md#hosted-mcp-and-skill-files)
+read-only in dsh.
 
 Core's `SOHA_DSH_RUNTIME_{ENABLED,BASE_URL,SERVICE_TOKEN_FILE,TIMEOUT,ALLOW_INSECURE_HTTP}`
 entries derive from dshRuntime values and the shared secret mount. Empty baseURL
@@ -66,7 +72,9 @@ The gateway authenticates health and the raw API allowlist, rejecting reflect,
 management, config overrides, encoded paths, redirects and unbounded request bodies.
 The raw API listens at 127.0.0.1:8888 in the same Pod; only port 8889 gets a Service.
 
-Example non-secret values (operator supplies existing Secret/ConfigMap contents):
+Example non-secret values. Set `image.repository` and `image.tag` to the
+validated Core image in the same values file and supply the existing
+Secrets and ConfigMaps:
 
 ```yaml
 config:
@@ -104,9 +112,12 @@ consolidation and model downloads, uses rrf and no UI/standalone worker. Never a
 a preexisting Hindsight DB with provider overrides or mental-model schedules without
 a separate reviewed migration. Core owns all bank and source ACL decisions.
 
-Restart optional workloads after external Secret/ConfigMap changes; back up dsh's
-single-writer journal and the independent Hindsight DB separately. Retain their
-storage when stopping services. Prove stale writers dead before removing journal locks.
+Follow [coordinated service token rotation](README.md#service-token-rotation)
+when changing a shared Secret. Use versioned ConfigMap names and update the
+affected runtime's Helm reference to roll out deployment or asset changes.
+Back up dsh's single-writer journal and the independent Hindsight DB separately.
+Retain their storage when stopping services. Verify old writers have stopped
+before removing journal locks.
 Real image startup, rootless/read-only permissions, model cache availability,
 DB/Gateway behavior and B3 integration remain runtime gates. Helm lint/render and
 the gateway unit check do not replace them. No release/publishing is performed here.

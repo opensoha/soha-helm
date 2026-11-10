@@ -202,8 +202,14 @@ dshRuntime:
   baseURL: ""
   timeout: 15s
   allowInsecureHTTP: false
+  # Use the retained claim name here when reinstalling or taking over storage.
+  existingClaim: ""
   storageSize: 5Gi
   storageClass: ""
+  pluginAssets:
+    configMap: "" # registry.json and optional Skill files
+    skillFiles: {} # relative path under /run/dsh-skills -> ConfigMap key
+    credentialSecret: "" # dedicated HTTP MCP Secret, exposed under /run/dsh-credentials
   resources:
     requests: {cpu: 100m, memory: 256Mi}
     limits: {cpu: "2", memory: 1Gi}

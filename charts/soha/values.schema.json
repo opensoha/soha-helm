@@ -382,11 +382,59 @@
           "type": "string",
           "const": "soha-workbench"
         },
+        "existingClaim": {
+          "type": "string"
+        },
         "storageSize": {
           "type": "string"
         },
         "storageClass": {
           "type": "string"
+        },
+        "pluginAssets": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "configMap": {
+              "type": "string"
+            },
+            "skillFiles": {
+              "type": "object",
+              "propertyNames": {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(/[A-Za-z0-9][A-Za-z0-9._-]*)*$"
+              },
+              "additionalProperties": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9._-]+$",
+                "maxLength": 253
+              }
+            },
+            "credentialSecret": {
+              "type": "string"
+            }
+          },
+          "if": {
+            "anyOf": [
+              {
+                "properties": {
+                  "skillFiles": { "minProperties": 1 }
+                },
+                "required": ["skillFiles"]
+              },
+              {
+                "properties": {
+                  "credentialSecret": { "minLength": 1 }
+                },
+                "required": ["credentialSecret"]
+              }
+            ]
+          },
+          "then": {
+            "properties": {
+              "configMap": { "minLength": 1 }
+            },
+            "required": ["configMap"]
+          }
         },
         "resources": {
           "type": "object"
@@ -417,9 +465,6 @@
                 "minLength": 1
               },
               "existingSecret": {
-                "minLength": 1
-              },
-              "storageSize": {
                 "minLength": 1
               }
             }

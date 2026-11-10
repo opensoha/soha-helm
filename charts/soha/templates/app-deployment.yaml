@@ -4,6 +4,10 @@
 {{- if and .Values.dshRuntime.enabled (not .Values.config.security.protectedDurableStorage) }}
 {{- fail "dshRuntime requires config.security.protectedDurableStorage=true after all Core workers support encrypted checkpoints" }}
 {{- end }}
+{{- $coreImage := include "soha.image" . }}
+{{- if and (or .Values.dshRuntime.enabled .Values.hindsight.enabled) (regexMatch "^ghcr[.]io/opensoha/soha:v?0[.]1[.]12(@sha256:.*)?$" $coreImage) }}
+{{- fail "dshRuntime and Hindsight require a compatible Core image; set image.repository and image.tag to the validated runtime-compatible Core image" }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -45,7 +49,7 @@ spec:
       {{- end }}
       containers:
         - name: soha
-          image: {{ include "soha.image" . | quote }}
+          image: {{ $coreImage | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}

@@ -161,6 +161,8 @@ config:
     # Changing this key requires migrating data encrypted with the old key.
     # Keep this value identical across all control-plane replicas.
     credentialEncryptionKey: soha-123456789012345678901234567890
+    # Enable after all Core workers support encrypted checkpoints. Required by dsh.
+    protectedDurableStorage: false
     secretProvider: ""
 
 resources:
@@ -185,3 +187,44 @@ securityContext:
   capabilities:
     drop:
       - ALL
+
+# Optional services and startup-only Core wiring; disabled means new chat unavailable, never native fallback.
+dshRuntime:
+  enabled: false
+  # Supply a locally built and validated immutable image reference.
+  image: ""
+  existingSecret: "" # key: service-token (shared with Core)
+  # Empty URLs derive from the Core Service and the B3 model/tool routes.
+  gatewayURL: ""
+  callbackURL: ""
+  models: soha-workbench
+  # Empty baseURL derives http://<fullname>-dsh:8097; opt into private HTTP explicitly.
+  baseURL: ""
+  timeout: 15s
+  allowInsecureHTTP: false
+  storageSize: 5Gi
+  storageClass: ""
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {cpu: "2", memory: 1Gi}
+
+hindsight:
+  enabled: false
+  # Fixed 1.2.0 index digest; includes API + the deployment-only Python gateway.
+  image: ghcr.io/vectorize-io/hindsight:1.2.0@sha256:19d0c08f3df79acac29384826419a1ca158129e81ec527cdcbd8c97ff4ef76da
+  existingSecret: "" # keys: service-token (shared with Core), gateway-pat, database-url
+  # Contains reviewed deploy/dsh-hindsight/{gateway.py,start.py} artifacts.
+  deploymentConfigMap: ""
+  gatewayURL: ""
+  # Empty reuses gatewayURL; set a provider-specific URL for a separate embedding route.
+  embeddingGatewayURL: ""
+  llmModel: ""
+  embeddingModel: ""
+  embeddingDimensions: 0
+  # Empty baseURL derives http://<fullname>-hindsight:8889.
+  baseURL: ""
+  timeout: 15s
+  instanceNamespace: "" # stable, unique, server-owned; required when enabled
+  resources:
+    requests: {cpu: 100m, memory: 512Mi}
+    limits: {cpu: "2", memory: 2Gi}

@@ -1,0 +1,87 @@
+{{- if .Values.hindsight.enabled }}
+{{- $name := include "soha.hindsightName" . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app.kubernetes.io/instance: {{ .Release.Name | quote }}, app.kubernetes.io/component: hindsight}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/instance: {{ .Release.Name | quote }}, app.kubernetes.io/component: hindsight}
+    spec:
+      automountServiceAccountToken: false
+      securityContext: {runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000, fsGroup: 1000, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: api
+          image: {{ .Values.hindsight.image | quote }}
+          command: [/app/api/.venv/bin/python, /run/deploy/start.py]
+          securityContext: &security
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          env:
+            - {name: SOHA_HINDSIGHT_DATABASE_URL_FILE, value: /run/hindsight-secrets/database-url}
+            - {name: SOHA_HINDSIGHT_GATEWAY_PAT_FILE, value: /run/hindsight-secrets/gateway-pat}
+            - {name: SOHA_HINDSIGHT_GATEWAY_URL, value: {{ .Values.hindsight.gatewayURL | quote }}}
+            - {name: SOHA_HINDSIGHT_EMBEDDING_GATEWAY_URL, value: {{ .Values.hindsight.embeddingGatewayURL | quote }}}
+            - {name: SOHA_HINDSIGHT_LLM_MODEL, value: {{ .Values.hindsight.llmModel | quote }}}
+            - {name: SOHA_HINDSIGHT_EMBEDDING_MODEL, value: {{ .Values.hindsight.embeddingModel | quote }}}
+            - {name: SOHA_HINDSIGHT_EMBEDDING_DIMENSIONS, value: {{ .Values.hindsight.embeddingDimensions | quote }}}
+          resources: {{ toYaml .Values.hindsight.resources | nindent 12 }}
+          volumeMounts:
+            - {name: deploy, mountPath: /run/deploy, readOnly: true}
+            - {name: api-secrets, mountPath: /run/hindsight-secrets, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
+        - name: gateway
+          image: {{ .Values.hindsight.image | quote }}
+          command: [/app/api/.venv/bin/python, /run/deploy/gateway.py]
+          securityContext: *security
+          env:
+            - {name: SOHA_HINDSIGHT_TOKEN_FILE, value: /run/hindsight-secrets/service-token}
+          ports: [{name: http, containerPort: 8889}]
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {cpu: 500m, memory: 128Mi}
+          readinessProbe:
+            exec:
+              command:
+                - /app/api/.venv/bin/python
+                - -c
+                - 'import urllib.request,pathlib; r=urllib.request.Request("http://127.0.0.1:8889/health",headers={"Authorization":"Bearer "+pathlib.Path("/run/hindsight-secrets/service-token").read_text().strip()}); urllib.request.urlopen(r,timeout=3).close()'
+            timeoutSeconds: 5
+            periodSeconds: 15
+          volumeMounts:
+            - {name: deploy, mountPath: /run/deploy, readOnly: true}
+            - {name: gateway-secret, mountPath: /run/hindsight-secrets, readOnly: true}
+      volumes:
+        - name: deploy
+          configMap: {name: {{ .Values.hindsight.deploymentConfigMap | quote }}}
+        - name: api-secrets
+          secret:
+            secretName: {{ .Values.hindsight.existingSecret | quote }}
+            defaultMode: 0440
+            items:
+              - {key: database-url, path: database-url}
+              - {key: gateway-pat, path: gateway-pat}
+        - name: gateway-secret
+          secret:
+            secretName: {{ .Values.hindsight.existingSecret | quote }}
+            defaultMode: 0440
+            items:
+              - {key: service-token, path: service-token}
+        - name: tmp
+          emptyDir: {medium: Memory, sizeLimit: 256Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+spec:
+  type: ClusterIP
+  selector: {app.kubernetes.io/instance: {{ .Release.Name | quote }}, app.kubernetes.io/component: hindsight}
+  ports: [{name: http, port: 8889, targetPort: http}]
+{{- end }}

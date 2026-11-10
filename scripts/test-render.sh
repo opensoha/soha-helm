@@ -661,3 +661,6 @@ python3 "$root_dir/charts/soha/tests/test_outpost_render.py"
 python3 "$root_dir/charts/soha/tests/test_proxy_render.py"
 
 python3 "$root_dir/charts/soha/tests/test_radius_render.py"
+
+# Optional service assets preserve default rendering and reject missing inputs.
+sh "$root_dir/scripts/test-optional-runtimes.sh"

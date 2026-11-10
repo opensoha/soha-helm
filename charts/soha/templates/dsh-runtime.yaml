@@ -1,0 +1,77 @@
+{{- if .Values.dshRuntime.enabled }}
+{{- $core := printf "http://%s:%v" (include "soha.fullname" .) .Values.service.port }}
+{{- $name := include "soha.dshName" . }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $name }}
+spec:
+  accessModes: [ReadWriteOnce]
+  {{- if .Values.dshRuntime.storageClass }}
+  storageClassName: {{ .Values.dshRuntime.storageClass | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.dshRuntime.storageSize }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app.kubernetes.io/instance: {{ .Release.Name | quote }}, app.kubernetes.io/component: dsh-runtime}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/instance: {{ .Release.Name | quote }}, app.kubernetes.io/component: dsh-runtime}
+    spec:
+      automountServiceAccountToken: false
+      securityContext: {runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000, fsGroup: 1000, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: dsh
+          image: {{ .Values.dshRuntime.image | quote }}
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          ports: [{name: http, containerPort: 8097}]
+          env:
+            - {name: SOHA_DSH_HOST, value: "0.0.0.0"}
+            - {name: SOHA_DSH_DATA_DIR, value: /var/lib/soha-dsh/journal}
+            - {name: SOHA_DSH_SERVICE_TOKEN_FILE, value: /run/dsh-secrets/service-token}
+            - {name: SOHA_DSH_MODEL_AUTH_MODE, value: core}
+            - {name: SOHA_DSH_GATEWAY_URL, value: {{ default (printf "%s/api/v1/copilot/dsh/model/v1" $core) .Values.dshRuntime.gatewayURL | quote }}}
+            - {name: SOHA_DSH_CORE_CALLBACK_URL, value: {{ default (printf "%s/api/v1/copilot/dsh/tools" $core) .Values.dshRuntime.callbackURL | quote }}}
+            - {name: SOHA_DSH_MODELS, value: {{ .Values.dshRuntime.models | quote }}}
+          resources: {{ toYaml .Values.dshRuntime.resources | nindent 12 }}
+          readinessProbe: &health
+            exec:
+              command:
+                - node
+                - -e
+                - 'fetch("http://127.0.0.1:8097/v1/health",{headers:{authorization:"Bearer "+require("fs").readFileSync(process.env.SOHA_DSH_SERVICE_TOKEN_FILE,"utf8").trim()},signal:AbortSignal.timeout(3000)}).then(async r=>process.exit(r.ok&&(await r.json()).ready?0:1)).catch(()=>process.exit(1))'
+            timeoutSeconds: 5
+            periodSeconds: 15
+          startupProbe:
+            <<: *health
+            failureThreshold: 20
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/soha-dsh}
+            - {name: secrets, mountPath: /run/dsh-secrets, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: data
+          persistentVolumeClaim: {claimName: {{ $name }}}
+        - name: secrets
+          secret: {secretName: {{ .Values.dshRuntime.existingSecret | quote }}, defaultMode: 0440}
+        - name: tmp
+          emptyDir: {medium: Memory, sizeLimit: 128Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+spec:
+  type: ClusterIP
+  selector: {app.kubernetes.io/instance: {{ .Release.Name | quote }}, app.kubernetes.io/component: dsh-runtime}
+  ports: [{name: http, port: 8097, targetPort: http}]
+{{- end }}

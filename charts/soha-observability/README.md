@@ -17,8 +17,9 @@ read root-grouped Pod logs on K3s; set `collector.podLogGroupId` when the node u
 The default `collector.signalAllowlist` contains only `logs`, so upgrading keeps the original
 filelog-to-Loki behavior. To receive application OTLP, enable `collector.otlp` and provide an
 existing Secret containing `bearer_token`, `tls.crt`, and `tls.key`. Metrics use Prometheus Remote
-Write and traces use OTLP/gRPC, typically to a SkyWalking OAP `11800` endpoint with its OTLP trace
-handler enabled. Each external bearer token comes from its own Secret. The collector adds
+Write. The optional generic trace exporter uses OTLP/gRPC for external consumers; it does not
+configure a Soha trace provider or enable Trace Explore or service topology in Core. Each external
+bearer token comes from its own Secret. The collector adds
 `soha.workspace.id`, `k8s.cluster.name`, and optional `deployment.environment.name`, preserves
 application-provided service identity, drops metrics and traces without `service.name`, removes
 credential attributes, and hashes configured user identifiers.
@@ -36,22 +37,22 @@ collector:
     endpoint: https://prometheus.example.com/api/v1/write
     existingSecret: prometheus-write-token
   traces:
-    endpoint: skywalking-oap.example.com:11800
-    existingSecret: skywalking-otlp-token
+    endpoint: otel-traces.example.com:4317
+    existingSecret: external-otlp-trace-token
 ```
 
 OTLP/gRPC uses TLS by default. Set `collector.traces.insecure: true` only for a trusted private
 network whose OAP endpoint intentionally serves plaintext gRPC; never use it across an untrusted
 network.
 
-SkyWalking converts OTLP traces to its Zipkin trace model. Configure the corresponding Soha trace
-data source with the OAP GraphQL endpoint and the enabled Zipkin query endpoint. OTLP traces are
-available to Trace Explore through that query endpoint; native SkyWalking service topology still
-requires telemetry analyzed by the native SkyWalking service model.
+Configure the external trace consumer and its OTLP receiver according to that system's own
+requirements. Soha Core currently has no built-in trace or service-topology query integration;
+related routes and query DTOs remain for compatibility and report the capability as unavailable
+until a future external provider integration is delivered.
 
 `production_external` only changes ownership: retention, replication, capacity, backup, upgrade,
 credential rotation, and recovery remain responsibilities of the external backends. Soha never
-exposes Loki, Prometheus, or OAP credentials to the browser.
+exposes Loki, Prometheus, or external trace backend credentials to the browser.
 
 ```bash
 helm repo add opensoha https://opensoha.github.io/soha-helm

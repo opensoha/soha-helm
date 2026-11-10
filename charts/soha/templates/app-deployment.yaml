@@ -1,3 +1,13 @@
+{{- if and .Values.dshRuntime.enabled (not .Values.dshRuntime.allowInsecureHTTP) (not (hasPrefix "https://" .Values.dshRuntime.baseURL)) }}
+{{- fail "dshRuntime requires HTTPS baseURL or explicit allowInsecureHTTP=true for an isolated private service network" }}
+{{- end }}
+{{- if and .Values.dshRuntime.enabled (not .Values.config.security.protectedDurableStorage) }}
+{{- fail "dshRuntime requires config.security.protectedDurableStorage=true after all Core workers support encrypted checkpoints" }}
+{{- end }}
+{{- $coreImage := include "soha.image" . }}
+{{- if and (or .Values.dshRuntime.enabled .Values.hindsight.enabled) (regexMatch "^ghcr[.]io/opensoha/soha:v?0[.]1[.]12(@sha256:.*)?$" $coreImage) }}
+{{- fail "dshRuntime and Hindsight require a compatible Core image; set image.repository and image.tag to the validated runtime-compatible Core image" }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -39,13 +49,27 @@ spec:
       {{- end }}
       containers:
         - name: soha
-          image: {{ include "soha.image" . | quote }}
+          image: {{ $coreImage | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           env:
             - name: SOHA_CONFIG_FILE
               value: /app/configs/config.yaml
+            {{- if .Values.dshRuntime.enabled }}
+            - {name: SOHA_DSH_RUNTIME_ENABLED, value: "true"}
+            - {name: SOHA_DSH_RUNTIME_BASE_URL, value: {{ default (printf "http://%s:8097" (include "soha.dshName" .)) .Values.dshRuntime.baseURL | quote }}}
+            - {name: SOHA_DSH_RUNTIME_SERVICE_TOKEN_FILE, value: /run/soha-dsh/service-token}
+            - {name: SOHA_DSH_RUNTIME_TIMEOUT, value: {{ .Values.dshRuntime.timeout | quote }}}
+            - {name: SOHA_DSH_RUNTIME_ALLOW_INSECURE_HTTP, value: {{ .Values.dshRuntime.allowInsecureHTTP | quote }}}
+            {{- end }}
+            {{- if .Values.hindsight.enabled }}
+            - {name: SOHA_HINDSIGHT_ENABLED, value: "true"}
+            - {name: SOHA_HINDSIGHT_BASE_URL, value: {{ default (printf "http://%s:8889" (include "soha.hindsightName" .)) .Values.hindsight.baseURL | quote }}}
+            - {name: SOHA_HINDSIGHT_TOKEN_FILE, value: /run/soha-hindsight/service-token}
+            - {name: SOHA_HINDSIGHT_INSTANCE_NAMESPACE, value: {{ .Values.hindsight.instanceNamespace | quote }}}
+            - {name: SOHA_HINDSIGHT_TIMEOUT, value: {{ .Values.hindsight.timeout | quote }}}
+            {{- end }}
           ports:
             - containerPort: 8080
               name: http
@@ -64,6 +88,12 @@ spec:
               mountPath: /app/configs/config.yaml
               subPath: config.yaml
               readOnly: true
+            {{- if .Values.dshRuntime.enabled }}
+            - {name: dsh-runtime-token, mountPath: /run/soha-dsh, readOnly: true}
+            {{- end }}
+            {{- if .Values.hindsight.enabled }}
+            - {name: hindsight-token, mountPath: /run/soha-hindsight, readOnly: true}
+            {{- end }}
             {{- if .Values.config.networkIngestQuery.enabled }}
             - name: network-ingest-query-tls
               mountPath: /run/soha-network-ingest-query
@@ -77,6 +107,20 @@ spec:
         - name: app-config
           secret:
             secretName: {{ include "soha.fullname" . }}-config
+        {{- if .Values.dshRuntime.enabled }}
+        - name: dsh-runtime-token
+          secret:
+            secretName: {{ .Values.dshRuntime.existingSecret | quote }}
+            defaultMode: 0440
+            items: [{key: service-token, path: service-token}]
+        {{- end }}
+        {{- if .Values.hindsight.enabled }}
+        - name: hindsight-token
+          secret:
+            secretName: {{ .Values.hindsight.existingSecret | quote }}
+            defaultMode: 0440
+            items: [{key: service-token, path: service-token}]
+        {{- end }}
         {{- if .Values.config.networkIngestQuery.enabled }}
         - name: network-ingest-query-tls
           secret:

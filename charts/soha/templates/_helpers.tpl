@@ -226,6 +226,7 @@ modules:
     enabled: {{ .Values.config.modules.cmdb.enabled }}
 security:
   credential_encryption_key: {{ .Values.config.security.credentialEncryptionKey | quote }}
+  protected_durable_storage: {{ .Values.config.security.protectedDurableStorage }}
   secret_provider: {{ .Values.config.security.secretProvider | quote }}
 bootstrap:
   seed_defaults: {{ .Values.config.seedDefaults }}
@@ -248,4 +249,12 @@ kubernetes:
 {{- else -}}
 {{- fail (printf "%s is required" $name) -}}
 {{- end -}}
+{{- end -}}
+
+{{- define "soha.dshName" -}}
+{{- printf "%s-dsh" (include "soha.fullname" . | trunc 59 | trimSuffix "-") -}}
+{{- end -}}
+
+{{- define "soha.hindsightName" -}}
+{{- printf "%s-hindsight" (include "soha.fullname" . | trunc 53 | trimSuffix "-") -}}
 {{- end -}}

@@ -575,3 +575,6 @@ if grep -q 'controllerrevisions\|platform.helm_releases\|platform.resources.' "$
   echo "Outpost inherited workbench permissions" >&2
   exit 1
 fi
+
+# Optional service assets preserve default rendering and reject missing inputs.
+sh "$root_dir/scripts/test-optional-runtimes.sh"

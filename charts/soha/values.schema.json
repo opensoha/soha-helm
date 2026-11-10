@@ -247,10 +247,212 @@
           "properties": {
             "credentialEncryptionKey": {
               "$ref": "#/definitions/systemSecret"
+            },
+            "protectedDurableStorage": {
+              "type": "boolean"
             }
           }
         }
       }
+    },
+    "dshRuntime": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "image": {
+          "type": "string"
+        },
+        "existingSecret": {
+          "type": "string"
+        },
+        "gatewayURL": {
+          "type": "string"
+        },
+        "callbackURL": {
+          "type": "string"
+        },
+        "models": {
+          "type": "string",
+          "const": "soha-workbench"
+        },
+        "existingClaim": {
+          "type": "string"
+        },
+        "storageSize": {
+          "type": "string"
+        },
+        "storageClass": {
+          "type": "string"
+        },
+        "pluginAssets": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "configMap": {
+              "type": "string"
+            },
+            "skillFiles": {
+              "type": "object",
+              "propertyNames": {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(/[A-Za-z0-9][A-Za-z0-9._-]*)*$"
+              },
+              "additionalProperties": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9._-]+$",
+                "maxLength": 253
+              }
+            },
+            "credentialSecret": {
+              "type": "string"
+            }
+          },
+          "if": {
+            "anyOf": [
+              {
+                "properties": {
+                  "skillFiles": { "minProperties": 1 }
+                },
+                "required": ["skillFiles"]
+              },
+              {
+                "properties": {
+                  "credentialSecret": { "minLength": 1 }
+                },
+                "required": ["credentialSecret"]
+              }
+            ]
+          },
+          "then": {
+            "properties": {
+              "configMap": { "minLength": 1 }
+            },
+            "required": ["configMap"]
+          }
+        },
+        "resources": {
+          "type": "object"
+        },
+        "baseURL": {
+          "type": "string"
+        },
+        "timeout": {
+          "type": "string",
+          "minLength": 1
+        },
+        "allowInsecureHTTP": {
+          "type": "boolean"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "image": {
+                "minLength": 1
+              },
+              "existingSecret": {
+                "minLength": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "hindsight": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "image": {
+          "type": "string"
+        },
+        "existingSecret": {
+          "type": "string"
+        },
+        "deploymentConfigMap": {
+          "type": "string"
+        },
+        "gatewayURL": {
+          "type": "string"
+        },
+        "embeddingGatewayURL": {
+          "type": "string"
+        },
+        "llmModel": {
+          "type": "string"
+        },
+        "embeddingModel": {
+          "type": "string"
+        },
+        "embeddingDimensions": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "resources": {
+          "type": "object"
+        },
+        "baseURL": {
+          "type": "string"
+        },
+        "timeout": {
+          "type": "string",
+          "minLength": 1
+        },
+        "instanceNamespace": {
+          "type": "string"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "existingSecret": {
+                "minLength": 1
+              },
+              "deploymentConfigMap": {
+                "minLength": 1
+              },
+              "gatewayURL": {
+                "minLength": 1
+              },
+              "llmModel": {
+                "minLength": 1
+              },
+              "embeddingModel": {
+                "minLength": 1
+              },
+              "embeddingDimensions": {
+                "minimum": 1
+              },
+              "image": {
+                "const": "ghcr.io/vectorize-io/hindsight:1.2.0@sha256:19d0c08f3df79acac29384826419a1ca158129e81ec527cdcbd8c97ff4ef76da"
+              },
+              "instanceNamespace": {
+                "minLength": 1
+              }
+            }
+          }
+        }
+      ]
     }
   },
   "allOf": [

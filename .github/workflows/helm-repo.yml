@@ -35,8 +35,23 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: soha-helm
     steps:
       - uses: actions/checkout@v7
+        with:
+          path: soha-helm
+          persist-credentials: false
+      - name: Check out the released Core deployment examples
+        uses: actions/checkout@v7
+        with:
+          repository: opensoha/soha
+          ref: 619e13a41cc0422984a1f2fbb9b720b61b4b935f # Core v0.1.13
+          path: soha
+          sparse-checkout: deploy/proxy-runtime/statefulset.example.yaml
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
       - uses: azure/setup-helm@v5
         with:
           version: v4.2.0

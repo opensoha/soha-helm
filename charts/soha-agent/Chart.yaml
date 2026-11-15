@@ -4,10 +4,10 @@ description: OpenSoha cluster agent for remote Kubernetes operations.
 type: application
 version: 0.2.8
 appVersion: "0.1.12"
-home: https://github.com/opensoha/soha-agent
+home: https://github.com/opensoha/soha/tree/main/agent
 icon: https://opensoha.github.io/soha-helm/logo.svg
 sources:
-  - https://github.com/opensoha/soha-agent
+  - https://github.com/opensoha/soha/tree/main/agent
 maintainers:
   - name: OpenSoha
     url: https://github.com/opensoha
@@ -21,7 +21,7 @@ annotations:
   artifacthub.io/license: Apache-2.0
   artifacthub.io/links: |
     - name: source
-      url: https://github.com/opensoha/soha-agent
+      url: https://github.com/opensoha/soha/tree/main/agent
   artifacthub.io/changes: |
     - kind: changed
       description: Use Agent v0.1.12 with workbench permissions for EndpointSlice writes and ControllerRevision history.

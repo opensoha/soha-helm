@@ -2,6 +2,13 @@
 
 This repository owns and publishes the official Helm charts for the Soha control plane, agents, observability add-on, and Kubernetes operator.
 
+It remains independent from the main `opensoha/soha` source repository. Core,
+Web, Agent and shared contracts live there under the root, `web/`, `agent/` and
+`contracts/`; Operator source remains in `opensoha/soha-operator`. Chart
+development follows this repository's [AGENTS.md](AGENTS.md) and
+[skill](.agents/skills/soha-helm/SKILL.md), with its own versions and publication
+entry. Source consolidation does not rename charts, images or installation URLs.
+
 ## Usage
 
 ### Helm Repository

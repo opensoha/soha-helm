@@ -7,9 +7,9 @@ description: Change or review Soha Helm charts, values, schemas, render behavior
 
 ## Purpose
 
-Keep chart behavior aligned with the runtime repositories while preserving
-three clear workload owners: control plane, generic agent or Identity Outpost,
-and Hermes Agent Runtime runner.
+Keep this chart repository and its development skill independent while aligning
+the five charts with their runtime owners. Core, Web, Agent and shared contracts
+are source components in `opensoha/soha`; Operator remains in `opensoha/soha-operator`.
 
 ## Workflow
 
@@ -32,6 +32,8 @@ and Hermes Agent Runtime runner.
 - `charts/soha-agent` owns generic agent and `mode=outpost` deployment
   behavior.
 - `charts/soha-hermes-agent` owns the Hermes runner.
+- `charts/soha-observability` owns the observability add-on.
+- `charts/soha-operator` packages the independently released Kubernetes Operator.
 - CLI images and standalone docs are not Helm workloads.
 - Keep secret values in Secret-backed paths and out of ConfigMaps, rendered
   logs, chart notes, and committed examples.
@@ -48,5 +50,5 @@ make verify
 
 Use focused `helm lint`, `helm template`, or
 `./scripts/test-render.sh` while iterating. `make verify` is the release
-gate for all three charts and the local repository index.
+gate for all five charts and the local repository index.
 Documentation-only changes need content, link, and diff checks; they do not trigger chart rendering or builds.

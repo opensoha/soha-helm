@@ -82,6 +82,10 @@ spec:
           env:
             - name: SOHA_CONFIG_FILE
               value: /app/configs/config.yaml
+            {{- if .Values.postgres.existingCASecret }}
+            - name: PGSSLROOTCERT
+              value: /run/soha-postgres/ca.crt
+            {{- end }}
             {{- if .Values.outpostExecutor.enabled }}
             - name: SOHA_OUTPOST_SIGNING_PRIVATE_KEY
               valueFrom:
@@ -111,12 +115,22 @@ spec:
               path: /readyz
               port: http
           livenessProbe:
-            httpGet:
-              path: /healthz
+            tcpSocket:
               port: http
+          startupProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 5
+            failureThreshold: 60
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
+            {{- if .Values.postgres.existingCASecret }}
+            - name: postgres-ca
+              mountPath: /run/soha-postgres
+              readOnly: true
+            {{- end }}
             {{- if .Values.proxyExecutor.enabled }}
             - name: proxy-executor-token
               mountPath: /var/run/soha-proxy-executor
@@ -153,6 +167,12 @@ spec:
               mountPath: /app/data
             {{- end }}
       volumes:
+        {{- if .Values.postgres.existingCASecret }}
+        - name: postgres-ca
+          secret:
+            secretName: {{ .Values.postgres.existingCASecret | quote }}
+            items: [{key: {{ .Values.postgres.caKey | quote }}, path: ca.crt}]
+        {{- end }}
         {{- if .Values.proxyExecutor.enabled }}
         - name: proxy-executor-token
           secret:

@@ -171,6 +171,12 @@ spec:
               value: {{ .Values.postgres.database | quote }}
             - name: SOHA_NETWORK_CONTROL_DATABASE_USER
               value: {{ .Values.postgres.username | quote }}
+            - name: SOHA_NETWORK_CONTROL_DATABASE_SSLMODE
+              value: {{ .Values.postgres.sslMode | quote }}
+            {{- if .Values.postgres.existingCASecret }}
+            - name: PGSSLROOTCERT
+              value: /run/soha-postgres/ca.crt
+            {{- end }}
             - name: SOHA_NETWORK_CONTROL_DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -209,6 +215,11 @@ spec:
               mountPath: /app/configs/config.yaml
               subPath: config.yaml
               readOnly: true
+            {{- if .Values.postgres.existingCASecret }}
+            - name: postgres-ca
+              mountPath: /run/soha-postgres
+              readOnly: true
+            {{- end }}
             - name: runtime-tls
               mountPath: /run/soha-network-control
               subPath: tls
@@ -217,6 +228,12 @@ spec:
         - name: app-config
           secret:
             secretName: {{ include "soha.fullname" . }}-config
+        {{- if .Values.postgres.existingCASecret }}
+        - name: postgres-ca
+          secret:
+            secretName: {{ .Values.postgres.existingCASecret | quote }}
+            items: [{key: {{ .Values.postgres.caKey | quote }}, path: ca.crt}]
+        {{- end }}
         - name: runtime-tls
           emptyDir:
             medium: Memory

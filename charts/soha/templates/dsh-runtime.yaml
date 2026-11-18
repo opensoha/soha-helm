@@ -1,5 +1,7 @@
 {{- if .Values.dshRuntime.enabled }}
 {{- $core := printf "http://%s:%v" (include "soha.fullname" .) .Values.service.port }}
+{{- $api := trimAll "/" .Values.config.basePath }}
+{{- if $api }}{{- $core = printf "%s/%s" $core $api }}{{- end }}
 {{- $name := include "soha.dshName" . }}
 {{- $assets := default dict .Values.dshRuntime.pluginAssets }}
 {{- if and $assets.credentialSecret (eq $assets.credentialSecret .Values.dshRuntime.existingSecret) }}
@@ -68,8 +70,8 @@ spec:
             - {name: SOHA_DSH_DATA_DIR, value: /var/lib/soha-dsh/journal}
             - {name: SOHA_DSH_SERVICE_TOKEN_FILE, value: /run/dsh-secrets/service-token}
             - {name: SOHA_DSH_MODEL_AUTH_MODE, value: core}
-            - {name: SOHA_DSH_GATEWAY_URL, value: {{ default (printf "%s/api/v1/copilot/dsh/model/v1" $core) .Values.dshRuntime.gatewayURL | quote }}}
-            - {name: SOHA_DSH_CORE_CALLBACK_URL, value: {{ default (printf "%s/api/v1/copilot/dsh/tools" $core) .Values.dshRuntime.callbackURL | quote }}}
+            - {name: SOHA_DSH_GATEWAY_URL, value: {{ default (printf "%s/copilot/dsh/model/v1" $core) .Values.dshRuntime.gatewayURL | quote }}}
+            - {name: SOHA_DSH_CORE_CALLBACK_URL, value: {{ default (printf "%s/copilot/dsh/tools" $core) .Values.dshRuntime.callbackURL | quote }}}
             - {name: SOHA_DSH_MODELS, value: {{ .Values.dshRuntime.models | quote }}}
             {{- if $assets.configMap }}
             - {name: SOHA_DSH_PLUGIN_ASSETS_FILE, value: /run/dsh-registry/registry.json}

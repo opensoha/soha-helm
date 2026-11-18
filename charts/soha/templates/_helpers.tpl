@@ -283,7 +283,7 @@ database:
   name: {{ .Values.postgres.database | quote }}
   user: {{ .Values.postgres.username | quote }}
   password: {{ include "soha.postgresPassword" . | quote }}
-  sslmode: disable
+  sslmode: {{ .Values.postgres.sslMode | quote }}
   max_open_conns: 20
   max_idle_conns: 10
   conn_max_lifetime: 1h

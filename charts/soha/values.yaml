@@ -37,6 +37,10 @@ postgres:
   username: pgsql
   host: ""
   port: 5432
+  sslMode: disable
+  # Optional CA for external PostgreSQL; existing Secret key defaults to ca.crt.
+  existingCASecret: ""
+  caKey: ca.crt
   # Standard initial credential. Existing live Secret values win on upgrades.
   password: pgsql
   storageSize: 10Gi
@@ -277,7 +281,7 @@ dshRuntime:
   # Supply a locally built and validated immutable image reference.
   image: ""
   existingSecret: "" # key: service-token (shared with Core)
-  # Empty URLs derive from the Core Service and the B3 model/tool routes.
+  # Empty URLs derive from the Core Service, config.basePath and model/tool routes.
   gatewayURL: ""
   callbackURL: ""
   models: soha-workbench

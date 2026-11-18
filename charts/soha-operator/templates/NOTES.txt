@@ -5,3 +5,9 @@ Check the controller:
 
 List WorkloadCronJobs:
   kubectl get workloadcronjobs -A
+
+The bundled CRD matches released controller 0.1.1 (Kubernetes Go types 0.35.1).
+Helm does not upgrade existing CRDs. Keep the installed schema and controller paired.
+For an existing 0.37 source schema, retain its matching custom image and use
+--skip-crds; do not apply the bundled stable CRD or downgrade to image 0.1.1.
+See the chart README for the source-build workflow.

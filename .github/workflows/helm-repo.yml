@@ -2,14 +2,6 @@ name: helm-repo
 
 on:
   pull_request:
-    paths:
-      - ".github/workflows/helm-repo.yml"
-      - "Makefile"
-      - "artifacthub-repo.yml"
-      - "index.html"
-      - "logo.svg"
-      - "charts/**"
-      - "scripts/**"
   push:
     branches:
       - main

@@ -393,12 +393,19 @@ if grep -q '^[[:space:]]*description:' "$operator_crd"; then
   echo "operator CRD was not generated with maxDescLen=0" >&2
   exit 1
 fi
-if grep -q '^[[:space:]]*workloadRef:' "$operator_crd" ||
-  ! grep -q '^[[:space:]]*schedulingGroup:' "$operator_crd" ||
+if ! grep -q '^[[:space:]]*workloadRef:' "$operator_crd" ||
+  grep -q '^[[:space:]]*schedulingGroup:\|^[[:space:]]*defaultUser:' "$operator_crd" ||
   ! grep -q '^[[:space:]]*sourceRef:' "$operator_crd"; then
-  echo "operator CRD must use native schedulingGroup and retain Soha sourceRef" >&2
+  echo "stable operator CRD must match released 0.1.1 and retain Soha sourceRef" >&2
   exit 1
 fi
+grep -q 'image: "ghcr.io/opensoha/soha-operator:0.1.1"' "$operator_render"
+python3 - "$operator_crd" <<'PY'
+import hashlib
+from pathlib import Path
+import sys
+assert hashlib.sha256(Path(sys.argv[1]).read_bytes()).hexdigest() == "982de6cc22ee4dba0b6e59d6cabd8863b63db211c02d30e6bfb4a29b7e10469c"
+PY
 if grep -q 'kind: ClusterRole\|kind: Role\|kind: ClusterRoleBinding\|kind: RoleBinding' "$operator_external_rbac_render"; then
   echo "operator rendered RBAC while rbac.create=false" >&2
   exit 1
@@ -661,6 +668,7 @@ python3 "$root_dir/charts/soha/tests/test_outpost_render.py"
 python3 "$root_dir/charts/soha/tests/test_proxy_render.py"
 
 python3 "$root_dir/charts/soha/tests/test_radius_render.py"
+python3 "$root_dir/scripts/test-core-deployment.py"
 
 # Optional service assets preserve default rendering and reject missing inputs.
 sh "$root_dir/scripts/test-optional-runtimes.sh"

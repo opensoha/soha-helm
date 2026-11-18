@@ -211,6 +211,20 @@
         },
         "password": {
           "$ref": "#/definitions/initialCredential"
+        },
+        "sslMode": {
+          "type": "string",
+          "enum": ["disable", "allow", "prefer", "require", "verify-ca", "verify-full"],
+          "default": "disable"
+        },
+        "existingCASecret": {
+          "type": "string",
+          "description": "Existing CA Secret mounted in Core and network-control for PostgreSQL TLS."
+        },
+        "caKey": {
+          "type": "string",
+          "minLength": 1,
+          "default": "ca.crt"
         }
       }
     },
@@ -1259,10 +1273,12 @@
           "type": "string"
         },
         "gatewayURL": {
-          "type": "string"
+          "type": "string",
+          "description": "Empty derives the model URL from the Core Service and config.basePath. Explicit URLs take precedence."
         },
         "callbackURL": {
-          "type": "string"
+          "type": "string",
+          "description": "Empty derives the tools URL from the Core Service and config.basePath. Explicit URLs take precedence."
         },
         "models": {
           "type": "string",

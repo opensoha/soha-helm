@@ -22,6 +22,33 @@ When the bundled PostgreSQL deployment is enabled, the Soha Pod waits for the
 database to accept connections before starting the control-plane container.
 External PostgreSQL deployments remain the operator's responsibility.
 
+Core startup and readiness use `/readyz`, including the database check. Startup
+allows up to 300 seconds (60 attempts every 5 seconds). Liveness checks the named
+`http` TCP port so a database outage removes readiness without restarting Core.
+`/healthz` remains available as a database-aware diagnostic endpoint.
+
+### External PostgreSQL TLS
+
+`postgres.sslMode` defaults to `disable` for compatibility. Supported modes are
+`disable`, `allow`, `prefer`, `require`, `verify-ca` and `verify-full`. For an
+external database, use `verify-full` with its DNS hostname and trusted CA:
+
+```yaml
+postgres:
+  enabled: false
+  host: postgres.example.com
+  sslMode: verify-full
+  existingCASecret: postgres-ca
+  caKey: ca.crt
+```
+
+Create the CA Secret in the release namespace and supply the database credentials
+through your existing secured values workflow. The chart mounts only `caKey` as
+`/run/soha-postgres/ca.crt` and sets `PGSSLROOTCERT` for Core and optional
+network-control, which shares Core's database and TLS mode. It does not change
+the independent bundled network-ingest database or configure client private keys.
+Use a new Secret name when rotating the CA to roll the affected Pods.
+
 ## Application data
 
 The chart mounts a persistent volume at `/app/data` for uploaded software
@@ -40,6 +67,11 @@ configuration pinned to the tested versions. Enabling dsh also requires
 `config.security.protectedDurableStorage: true`, set after every Core worker
 supports encrypted checkpoints. Keep the setting and the installation's
 encryption key while any encrypted checkpoint may need recovery.
+
+Empty `dshRuntime.gatewayURL` and `dshRuntime.callbackURL` use the Core Service,
+`config.basePath` (default `/api/v1`) and `/copilot/dsh/model/v1` or
+`/copilot/dsh/tools`. Leading and trailing slashes in `basePath` are normalized;
+explicit URL overrides take precedence.
 
 ### Journal storage
 

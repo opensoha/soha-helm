@@ -19,8 +19,10 @@ an existing Secret with `service-token` (32+ characters, shared with Core).
 Core freezes the service-authenticated `Start.tools` catalog per run and binds its
 opaque revision. Production core mode needs no startup catalog file or ConfigMap. Production Node defaults to `SOHA_DSH_MODEL_AUTH_MODE=core`, requires no
 PAT and uses only virtual model `soha-workbench`; Core selects the actual route.
-Empty gatewayURL/callbackURL derive the Core Service's
-`/api/v1/copilot/dsh/model/v1` and `/api/v1/copilot/dsh/tools` URLs. Both must be
+Empty gatewayURL/callbackURL derive the Core Service's URLs using
+`config.basePath` (default `/api/v1`) plus `/copilot/dsh/model/v1` and
+`/copilot/dsh/tools`. Leading and trailing slashes are normalized; explicit
+gatewayURL/callbackURL overrides take precedence. Both URLs must be
 reachable from Node directly, not via an Agent cluster proxy.
 One replica owns one PVC; Recreate prevents overlapping writers. The journal is
 created beneath the fsGroup-writable PVC root so UID 1000 owns the directory.

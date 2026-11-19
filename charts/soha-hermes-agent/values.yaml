@@ -18,6 +18,8 @@ secrets:
   controlPlaneExistingSecret:
     name: soha-config
     key: execution-runner-token
+    # Update this non-secret value when the referenced token rotates.
+    revision: ""
 
 controlPlane:
   baseUrl: http://soha:8080

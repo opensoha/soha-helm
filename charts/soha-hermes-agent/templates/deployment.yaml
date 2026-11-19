@@ -11,6 +11,13 @@ spec:
       {{- include "soha-hermes-agent.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+      {{- if .Values.secrets.controlPlaneBearerToken }}
+      annotations:
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum | quote }}
+      {{- else if .Values.secrets.controlPlaneExistingSecret.revision }}
+      annotations:
+        soha.io/control-plane-secret-revision: {{ .Values.secrets.controlPlaneExistingSecret.revision | quote }}
+      {{- end }}
       labels:
         {{- include "soha-hermes-agent.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/part-of: opensoha

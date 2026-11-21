@@ -110,5 +110,124 @@ class CoreDeployment(unittest.TestCase):
         self.assertIn('SOHA_DSH_CORE_CALLBACK_URL, value: "https://callback.example/tools"', dsh)
 
 
+class AppHostingDynamic(unittest.TestCase):
+    def values(self):
+        return {
+            "appGateway": {
+                "enabled": True,
+                "appsDomain": "apps.example.com",
+                "publicCoreUrl": "https://soha.example.com",
+                "existingSecret": "soha-app-gateway-auth",
+                "s3": {"endpoint": "https://minio.internal:9000", "bucket": "apps",
+                       "existingSecret": "soha-app-gateway-s3"},
+            },
+            "appHostingDynamic": {
+                "enabled": True,
+                "runtimeNamespace": "soha-runtime",
+                "buildNamespace": "soha-build",
+                "appDataExistingSecret": "soha-app-data",
+                "maxPoolBytes": 67108864,
+                "appDataCIDR": "10.42.8.16/32",
+                "knativePrivateIngress": [
+                    {"namespace": "kourier-system", "podLabels": {"app": "3scale-kourier-gateway"}},
+                    {"namespace": "knative-serving", "podLabels": {"app": "activator"}},
+                ],
+                "buildClientImage": "registry.example/build-client@sha256:" + "a" * 64,
+                "nodeBaseImage": "registry.example/node@sha256:" + "b" * 64,
+                "pythonBaseImage": "registry.example/python@sha256:" + "c" * 64,
+                "registryRepository": "registry.example/apps",
+                "buildRegistrySecret": "soha-build-registry",
+                "buildkitAddress": "tcp://buildkit.soha-build:1234",
+                "buildkitTLSSecret": "soha-buildkit-tls",
+                "buildSourceOrigin": "https://minio.example.com",
+            },
+        }
+
+    def test_disabled_by_default(self):
+        result = render({})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for absent in ("app-hosting", "SOHA_APP_HOSTING_", "SOHA_APP_GATEWAY_RUNTIME_NAMESPACE"):
+            self.assertNotIn(absent, result.stdout)
+
+    def test_enabled_wires_env_rbac_and_network_policy(self):
+        result = render(self.values())
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for required in (
+            "kind: ServiceAccount", "kind: Role", "kind: RoleBinding", "kind: NetworkPolicy",
+            "serviceAccountName: soha-app-hosting", "automountServiceAccountToken: true",
+            'namespace: "soha-runtime"', 'namespace: "soha-build"',
+            "resources: [\"services\"]", "resources: [\"jobs\"]", "resources: [\"pods\"]",
+            'cidr: "10.42.8.16/32"', 'kubernetes.io/metadata.name: "knative-serving"',
+            'namespace: "kourier-system"', "app: 3scale-kourier-gateway", "app: activator",
+            "app.kubernetes.io/component: app-gateway", "name: soha-app-hosting-private-0",
+            'value: "67108864"', "SOHA_APP_GATEWAY_RUNTIME_NAMESPACE",
+            "SOHA_APP_GATEWAY_RUNTIME_CLUSTER_DOMAIN",
+        ):
+            self.assertIn(required, result.stdout)
+        for env in ("SOHA_APP_HOSTING_RUNTIME_NAMESPACE", "SOHA_APP_HOSTING_BUILD_NAMESPACE",
+                    "SOHA_APP_HOSTING_BUILD_CLIENT_IMAGE", "SOHA_APP_HOSTING_NODE_BASE_IMAGE",
+                    "SOHA_APP_HOSTING_PYTHON_BASE_IMAGE", "SOHA_APP_HOSTING_REGISTRY_REPOSITORY",
+                    "SOHA_APP_HOSTING_BUILD_REGISTRY_SECRET", "SOHA_APP_HOSTING_BUILDKIT_ADDRESS",
+                    "SOHA_APP_HOSTING_BUILDKIT_TLS_SECRET", "SOHA_APP_HOSTING_BUILD_SOURCE_ORIGIN",
+                    "SOHA_APP_HOSTING_APP_DATA_ADMIN_DSN", "SOHA_APP_HOSTING_APP_DATA_KEY",
+                    "SOHA_APP_HOSTING_APP_DATA_MAX_POOL_BYTES"):
+            self.assertIn(env, result.stdout)
+        self.assertNotIn("SOHA_APP_HOSTING_BUILD_RUNTIME_CLASS", result.stdout)
+        self.assertIn("secretKeyRef:", result.stdout)
+
+    def test_network_policies_are_retained_by_helm(self):
+        result = render(self.values())
+        self.assertEqual(result.returncode, 0, result.stderr)
+        policies = [doc for doc in result.stdout.split("\n---\n")
+                    if "kind: NetworkPolicy\n" in doc]
+        self.assertEqual(len(policies), 3)
+        for policy in policies:
+            self.assertIn("helm.sh/resource-policy: keep", policy)
+
+    def test_runtime_policy_scrapes_autoscaler_on_tcp_9090_only(self):
+        result = render(self.values())
+        self.assertEqual(result.returncode, 0, result.stderr)
+        policy = next(doc for doc in result.stdout.split("\n---\n")
+                      if "kind: NetworkPolicy\n" in doc
+                      and 'namespace: "soha-runtime"' in doc
+                      and "app.kubernetes.io/managed-by: soha-app-hosting" in doc)
+        ingress = policy.split("  ingress:\n", 1)[1].split("  egress:\n", 1)[0]
+        _, routes, metrics = ingress.split("    - from:\n")
+        self.assertNotIn("app: autoscaler", routes)
+        expected = "".join(
+            "        - namespaceSelector:\n"
+            "            matchLabels:\n"
+            f'              kubernetes.io/metadata.name: "{namespace}"\n'
+            "          podSelector:\n"
+            "            matchLabels:\n"
+            "              app: autoscaler\n"
+            "              app.kubernetes.io/component: autoscaler\n"
+            "              app.kubernetes.io/name: knative-serving\n"
+            for namespace in ("kourier-system", "knative-serving")
+        )
+        self.assertEqual(metrics, expected + "      ports:\n        - protocol: TCP\n          port: 9090\n")
+
+    def test_fail_closed(self):
+        mutations = (
+            lambda v: v["appHostingDynamic"].update(appDataExistingSecret=""),
+            lambda v: v["appHostingDynamic"].update(buildNamespace="soha-runtime"),
+            lambda v: v["appHostingDynamic"].update(runtimeNamespace="default"),
+            lambda v: v["appGateway"].update(decisionCacheTtl="5s"),
+            lambda v: v["appHostingDynamic"].update(maxPoolBytes=0),
+            lambda v: v["appHostingDynamic"].update(appDataCIDR="0.0.0.0/0"),
+            lambda v: v["appHostingDynamic"].update(appDataCIDR="10.0.0.0/8"),
+            lambda v: v["appHostingDynamic"].update(knativePrivateIngress=[]),
+            lambda v: v["appHostingDynamic"].update(knativePrivateIngress=[
+                {"namespace": "soha-runtime", "podLabels": {"app": "activator"}}
+            ]),
+            lambda v: v["appHostingDynamic"].update(buildSourceOrigin="http://git.example.com"),
+            lambda v: v["appHostingDynamic"].update(nodeBaseImage="registry.example/node:22"),
+        )
+        for mutate in mutations:
+            values = self.values()
+            mutate(values)
+            self.assertNotEqual(render(values).returncode, 0)
+
+
 if __name__ == "__main__":
     unittest.main()

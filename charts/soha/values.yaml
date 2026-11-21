@@ -378,3 +378,36 @@ appGateway:
   nodeSelector: {}
   tolerations: []
   affinity: {}
+
+# Optional dynamic App Hosting data plane (Knative runtime + BuildKit builds). Requires appGateway.
+appHostingDynamic:
+  enabled: false
+  # Distinct, pre-existing namespaces owned by the Soha Operator; must not be the release namespace.
+  runtimeNamespace: ""
+  buildNamespace: ""
+  clusterDomain: cluster.local
+  # Pre-existing Secret in the release namespace consumed only by Core. dsnKey must grant
+  # least-privilege access to the isolated app-data database; key encrypts app data.
+  appDataExistingSecret: ""
+  dsnKey: dsn
+  keyKey: key
+  # Required positive when enabled.
+  maxPoolBytes: 0
+  # Fixed IPv4 /32 App Data endpoint reachable from hosted apps.
+  appDataCIDR: ""
+  appDataPort: 5432
+  # All route-entry Pods for the dedicated Knative installation, including the
+  # cluster-local ingress and activator. The chart restricts their inbound traffic.
+  knativePrivateIngress: []
+  # Required image/config inputs provisioned by the Soha Operator when enabled.
+  buildClientImage: ""
+  nodeBaseImage: ""
+  pythonBaseImage: ""
+  registryRepository: ""
+  buildRegistrySecret: ""
+  buildkitAddress: ""
+  buildkitTLSSecret: ""
+  # Must be an HTTPS origin.
+  buildSourceOrigin: ""
+  # Optional RuntimeClass for build Jobs.
+  buildRuntimeClass: ""

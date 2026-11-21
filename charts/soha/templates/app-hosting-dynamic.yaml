@@ -1,0 +1,206 @@
+{{- if .Values.appHostingDynamic.enabled }}
+{{- $h := .Values.appHostingDynamic }}
+{{- $gw := .Values.appGateway }}
+{{- if not $gw.enabled }}{{ fail "appHostingDynamic requires appGateway.enabled=true" }}{{ end }}
+{{- $cache := include "soha.cliDurationSeconds" (dict "value" (default "0s" $gw.decisionCacheTtl) "default" 0) | float64 }}
+{{- if ne $cache 0.0 }}{{ fail "appHostingDynamic requires appGateway.decisionCacheTtl=0s so revocation applies immediately across replicas" }}{{ end }}
+{{- if not $h.knativePrivateIngress }}{{ fail "appHostingDynamic.knativePrivateIngress must identify the dedicated cluster-local ingress and activator Pods" }}{{ end }}
+{{- $runtimeNS := trim (default "" $h.runtimeNamespace) }}
+{{- $buildNS := trim (default "" $h.buildNamespace) }}
+{{- if or (not $runtimeNS) (not $buildNS) }}{{ fail "appHostingDynamic.runtimeNamespace and appHostingDynamic.buildNamespace are required when enabled" }}{{ end }}
+{{- if or (not (regexMatch "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$" $runtimeNS)) (not (regexMatch "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$" $buildNS)) }}{{ fail "appHostingDynamic runtime/build namespaces must be valid DNS labels" }}{{ end }}
+{{- if or (eq $runtimeNS $buildNS) (eq $runtimeNS .Release.Namespace) (eq $buildNS .Release.Namespace) }}{{ fail "appHostingDynamic runtime/build namespaces must be distinct and differ from the release namespace; provide pre-existing operator-provisioned namespaces" }}{{ end }}
+{{- $appSecret := trim (default "" $h.appDataExistingSecret) }}
+{{- if not $appSecret }}{{ fail "appHostingDynamic.appDataExistingSecret is required when enabled" }}{{ end }}
+{{- if or (eq $appSecret (printf "%s-config" (include "soha.fullname" .))) (eq $appSecret (trim (default "" $gw.existingSecret))) }}{{ fail "appHostingDynamic.appDataExistingSecret must be dedicated to Core and separate from the config and gateway Secrets" }}{{ end }}
+{{- $dsnKey := trim (default "dsn" $h.dsnKey) }}
+{{- $keyKey := trim (default "key" $h.keyKey) }}
+{{- if or (not (regexMatch "^[A-Za-z0-9._-]+$" $dsnKey)) (not (regexMatch "^[A-Za-z0-9._-]+$" $keyKey)) (eq $dsnKey $keyKey) }}{{ fail "appHostingDynamic.dsnKey and appHostingDynamic.keyKey must be distinct valid Secret key names" }}{{ end }}
+{{- if le (int64 $h.maxPoolBytes) 0 }}{{ fail "appHostingDynamic.maxPoolBytes must be positive" }}{{ end }}
+{{- $appDataCIDR := trim (default "" $h.appDataCIDR) }}
+{{- if not (regexMatch "^([0-9]{1,3}\\.){3}[0-9]{1,3}/32$" $appDataCIDR) }}{{ fail "appHostingDynamic.appDataCIDR must identify exactly one IPv4 App Data endpoint (/32)" }}{{ end }}
+{{- range $key := list "buildClientImage" "nodeBaseImage" "pythonBaseImage" "registryRepository" "buildRegistrySecret" "buildkitAddress" "buildkitTLSSecret" "buildSourceOrigin" }}
+{{- if not (trim (default "" (index $h $key))) }}{{ fail (printf "appHostingDynamic.%s is required when enabled; the Soha Operator provisions the referenced resources" $key) }}{{ end }}
+{{- end }}
+{{- range $key := list "buildClientImage" "nodeBaseImage" "pythonBaseImage" }}
+{{- if not (regexMatch "@sha256:[a-f0-9]{64}$" (index $h $key)) }}
+{{- fail (printf "appHostingDynamic.%s must be pinned by sha256 digest" $key) }}
+{{- end }}
+{{- end }}
+{{- if not (hasPrefix "https://" (trim $h.buildSourceOrigin)) }}{{ fail "appHostingDynamic.buildSourceOrigin must be an HTTPS URL" }}{{ end }}
+{{- $name := include "soha.fullname" . }}
+{{- $sa := printf "%s-app-hosting" ($name | trunc 50 | trimSuffix "-") }}
+{{- $runtimeRole := printf "%s-app-hosting-runtime" ($name | trunc 42 | trimSuffix "-") }}
+{{- $buildRole := printf "%s-app-hosting-build" ($name | trunc 44 | trimSuffix "-") }}
+{{- $trustedNamespaces := list }}
+{{- range $peer := $h.knativePrivateIngress }}
+{{- if or (eq $peer.namespace $runtimeNS) (eq $peer.namespace $buildNS) (eq $peer.namespace $.Release.Namespace) }}
+{{- fail "Knative route-entry Pods must be in dedicated administrator-only namespaces" }}
+{{- end }}
+{{- $trustedNamespaces = append $trustedNamespaces $peer.namespace }}
+{{- end }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $sa }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "soha.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $runtimeRole }}
+  namespace: {{ $runtimeNS | quote }}
+  labels:
+    {{- include "soha.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["serving.knative.dev"]
+    resources: ["services"]
+    verbs: ["get", "create", "delete"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $runtimeRole }}
+  namespace: {{ $runtimeNS | quote }}
+  labels:
+    {{- include "soha.labels" . | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $sa }}
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $runtimeRole }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $buildRole }}
+  namespace: {{ $buildNS | quote }}
+  labels:
+    {{- include "soha.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "create", "update", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["list"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $buildRole }}
+  namespace: {{ $buildNS | quote }}
+  labels:
+    {{- include "soha.labels" . | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $sa }}
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $buildRole }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  annotations:
+    helm.sh/resource-policy: keep
+  name: {{ $sa }}
+  namespace: {{ $runtimeNS | quote }}
+  labels:
+    {{- include "soha.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/managed-by: soha-app-hosting
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        {{- range $peer := $h.knativePrivateIngress }}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $peer.namespace | quote }}
+          podSelector:
+            matchLabels:
+              {{- toYaml $peer.podLabels | nindent 14 }}
+        {{- end }}
+    - from:
+        {{- range $namespace := $trustedNamespaces | uniq }}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $namespace | quote }}
+          podSelector:
+            matchLabels:
+              app: autoscaler
+              app.kubernetes.io/component: autoscaler
+              app.kubernetes.io/name: knative-serving
+        {{- end }}
+      ports:
+        - protocol: TCP
+          port: 9090
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - ipBlock:
+            cidr: {{ $appDataCIDR | quote }}
+      ports:
+        - protocol: TCP
+          port: {{ int $h.appDataPort }}
+{{- range $index, $peer := $h.knativePrivateIngress }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  annotations:
+    helm.sh/resource-policy: keep
+  name: {{ printf "%s-private-%d" ($sa | trunc 48 | trimSuffix "-") $index }}
+  namespace: {{ $peer.namespace | quote }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- toYaml $peer.podLabels | nindent 6 }}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $.Release.Namespace | quote }}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/component: app-gateway
+              {{- include "soha.selectorLabels" $ | nindent 14 }}
+        {{- range $namespace := $trustedNamespaces | uniq }}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $namespace | quote }}
+        {{- end }}
+{{- end }}
+{{- end }}

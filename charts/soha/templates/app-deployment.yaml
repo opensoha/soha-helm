@@ -28,6 +28,10 @@ spec:
         app.kubernetes.io/component: app
         {{- include "soha.selectorLabels" . | nindent 8 }}
     spec:
+      {{- if .Values.appHostingDynamic.enabled }}
+      serviceAccountName: {{ printf "%s-app-hosting" (include "soha.fullname" . | trunc 50 | trimSuffix "-") }}
+      automountServiceAccountToken: true
+      {{- end }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -106,6 +110,33 @@ spec:
             - {name: SOHA_HINDSIGHT_TOKEN_FILE, value: /run/soha-hindsight/service-token}
             - {name: SOHA_HINDSIGHT_INSTANCE_NAMESPACE, value: {{ .Values.hindsight.instanceNamespace | quote }}}
             - {name: SOHA_HINDSIGHT_TIMEOUT, value: {{ .Values.hindsight.timeout | quote }}}
+            {{- end }}
+            {{- if .Values.appHostingDynamic.enabled }}
+            {{- $h := .Values.appHostingDynamic }}
+            - {name: SOHA_APP_HOSTING_RUNTIME_NAMESPACE, value: {{ $h.runtimeNamespace | quote }}}
+            - {name: SOHA_APP_HOSTING_BUILD_NAMESPACE, value: {{ $h.buildNamespace | quote }}}
+            - {name: SOHA_APP_HOSTING_BUILD_CLIENT_IMAGE, value: {{ $h.buildClientImage | quote }}}
+            - {name: SOHA_APP_HOSTING_NODE_BASE_IMAGE, value: {{ $h.nodeBaseImage | quote }}}
+            - {name: SOHA_APP_HOSTING_PYTHON_BASE_IMAGE, value: {{ $h.pythonBaseImage | quote }}}
+            - {name: SOHA_APP_HOSTING_REGISTRY_REPOSITORY, value: {{ $h.registryRepository | quote }}}
+            - {name: SOHA_APP_HOSTING_BUILD_REGISTRY_SECRET, value: {{ $h.buildRegistrySecret | quote }}}
+            - {name: SOHA_APP_HOSTING_BUILDKIT_ADDRESS, value: {{ $h.buildkitAddress | quote }}}
+            - {name: SOHA_APP_HOSTING_BUILDKIT_TLS_SECRET, value: {{ $h.buildkitTLSSecret | quote }}}
+            - {name: SOHA_APP_HOSTING_BUILD_SOURCE_ORIGIN, value: {{ $h.buildSourceOrigin | quote }}}
+            {{- if trim (default "" $h.buildRuntimeClass) }}
+            - {name: SOHA_APP_HOSTING_BUILD_RUNTIME_CLASS, value: {{ $h.buildRuntimeClass | quote }}}
+            {{- end }}
+            - name: SOHA_APP_HOSTING_APP_DATA_ADMIN_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $h.appDataExistingSecret | quote }}
+                  key: {{ $h.dsnKey | quote }}
+            - name: SOHA_APP_HOSTING_APP_DATA_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $h.appDataExistingSecret | quote }}
+                  key: {{ $h.keyKey | quote }}
+            - {name: SOHA_APP_HOSTING_APP_DATA_MAX_POOL_BYTES, value: {{ printf "%d" (int64 $h.maxPoolBytes) | quote }}}
             {{- end }}
           ports:
             - containerPort: 8080

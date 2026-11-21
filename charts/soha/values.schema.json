@@ -1668,6 +1668,184 @@
           "type": "object"
         }
       }
+    },
+    "appHostingDynamic": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "runtimeNamespace": {
+          "type": "string",
+          "maxLength": 63
+        },
+        "buildNamespace": {
+          "type": "string",
+          "maxLength": 63
+        },
+        "clusterDomain": {
+          "type": "string",
+          "minLength": 1
+        },
+        "appDataExistingSecret": {
+          "type": "string",
+          "maxLength": 253
+        },
+        "dsnKey": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]+$",
+          "maxLength": 253
+        },
+        "keyKey": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]+$",
+          "maxLength": 253
+        },
+        "maxPoolBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "appDataCIDR": {
+          "type": "string"
+        },
+        "appDataPort": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "knativePrivateIngress": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["namespace", "podLabels"],
+            "properties": {
+              "namespace": {
+                "type": "string",
+                "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+                "maxLength": 63
+              },
+              "podLabels": {
+                "type": "object",
+                "minProperties": 1,
+                "additionalProperties": { "type": "string", "minLength": 1 }
+              }
+            }
+          }
+        },
+        "buildClientImage": {
+          "type": "string"
+        },
+        "nodeBaseImage": {
+          "type": "string"
+        },
+        "pythonBaseImage": {
+          "type": "string"
+        },
+        "registryRepository": {
+          "type": "string"
+        },
+        "buildRegistrySecret": {
+          "type": "string",
+          "maxLength": 253
+        },
+        "buildkitAddress": {
+          "type": "string"
+        },
+        "buildkitTLSSecret": {
+          "type": "string",
+          "maxLength": 253
+        },
+        "buildSourceOrigin": {
+          "type": "string"
+        },
+        "buildRuntimeClass": {
+          "type": "string"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            },
+            "required": [
+              "enabled"
+            ]
+          },
+          "then": {
+            "required": [
+              "runtimeNamespace",
+              "buildNamespace",
+              "appDataExistingSecret",
+              "maxPoolBytes",
+              "appDataCIDR",
+              "buildClientImage",
+              "nodeBaseImage",
+              "pythonBaseImage",
+              "registryRepository",
+              "buildRegistrySecret",
+              "buildkitAddress",
+              "buildkitTLSSecret",
+              "buildSourceOrigin"
+            ],
+            "properties": {
+              "runtimeNamespace": {
+                "minLength": 1
+              },
+              "buildNamespace": {
+                "minLength": 1
+              },
+              "appDataExistingSecret": {
+                "minLength": 1
+              },
+              "dsnKey": {
+                "minLength": 1
+              },
+              "keyKey": {
+                "minLength": 1
+              },
+              "maxPoolBytes": {
+                "minimum": 1
+              },
+              "appDataCIDR": {
+                "minLength": 1
+              },
+              "clusterDomain": {
+                "minLength": 1
+              },
+              "buildClientImage": {
+                "minLength": 1
+              },
+              "nodeBaseImage": {
+                "minLength": 1
+              },
+              "pythonBaseImage": {
+                "minLength": 1
+              },
+              "registryRepository": {
+                "minLength": 1
+              },
+              "buildRegistrySecret": {
+                "minLength": 1
+              },
+              "buildkitAddress": {
+                "minLength": 1
+              },
+              "buildkitTLSSecret": {
+                "minLength": 1
+              },
+              "buildSourceOrigin": {
+                "minLength": 1,
+                "pattern": "^https://[^\\s]+$"
+              }
+            }
+          }
+        }
+      ]
     }
   },
   "allOf": [

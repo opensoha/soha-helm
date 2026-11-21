@@ -189,6 +189,12 @@ spec:
               value: /run/secrets/soha-app-gateway-s3/secret-access-key
             - name: SOHA_APP_GATEWAY_DECISION_CACHE_TTL
               value: {{ $decisionCacheTtl | quote }}
+            {{- if .Values.appHostingDynamic.enabled }}
+            - name: SOHA_APP_GATEWAY_RUNTIME_NAMESPACE
+              value: {{ .Values.appHostingDynamic.runtimeNamespace | quote }}
+            - name: SOHA_APP_GATEWAY_RUNTIME_CLUSTER_DOMAIN
+              value: {{ .Values.appHostingDynamic.clusterDomain | quote }}
+            {{- end }}
           ports:
             - name: http
               containerPort: 8090

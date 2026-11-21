@@ -53,6 +53,10 @@
 {{- if hasKey $s3 "pathStyle" }}{{- $s3PathStyle = ternary true false $s3.pathStyle }}{{- end }}
 {{- $s3Insecure := false }}
 {{- if hasKey $s3 "insecure" }}{{- $s3Insecure = ternary true false $s3.insecure }}{{- end }}
+{{- $s3BucketEndpoint := default false $s3.bucketEndpoint }}
+{{- if and $s3BucketEndpoint (or $s3PathStyle $s3Insecure (not (hasPrefix "https://" $s3Endpoint))) }}
+{{- fail "appGateway.s3.bucketEndpoint requires a trusted HTTPS endpoint with pathStyle and insecure both false" }}
+{{- end }}
 {{- $httpRedirectPort := int (default 0 $g.httpRedirectPort) }}
 {{- if or (eq $httpRedirectPort 8090) (eq $httpRedirectPort 8091) }}
 {{- fail "appGateway.httpRedirectPort cannot collide with listener port 8090 or health port 8091" }}
@@ -86,6 +90,7 @@
     "region" $s3Region
     "prefix" $s3Prefix
     "pathStyle" $s3PathStyle
+    "bucketEndpoint" $s3BucketEndpoint
     "insecure" $s3Insecure
     "existingSecret" $s3ExistingSecret
     "accessKeyIdKey" $accessKeyIdKey
@@ -181,6 +186,8 @@ spec:
               value: {{ $s3Prefix | quote }}
             - name: SOHA_APP_GATEWAY_S3_PATH_STYLE
               value: {{ ternary "true" "false" $s3PathStyle | quote }}
+            - name: SOHA_APP_GATEWAY_S3_BUCKET_ENDPOINT
+              value: {{ ternary "true" "false" $s3BucketEndpoint | quote }}
             - name: SOHA_APP_GATEWAY_S3_INSECURE
               value: {{ ternary "true" "false" $s3Insecure | quote }}
             - name: SOHA_APP_GATEWAY_S3_ACCESS_KEY_FILE

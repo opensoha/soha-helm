@@ -421,8 +421,11 @@ appGateway:
 - `existingSecret`, `gatewayTokenKey` (`gateway-token`), `cookieSecretKey`
   (`cookie-secret`), `secretRevision` (bump to roll Pods after in-place Secret
   rotation), and optional direct `tls` (`existingSecret`, `certKey`, `keyKey`).
-- `s3` (`endpoint`, `bucket`, `region`, `prefix`, `pathStyle`, `insecure`,
+- `s3` (`endpoint`, `bucket`, `region`, `prefix`, `pathStyle`, `bucketEndpoint`, `insecure`,
   `existingSecret`, `accessKeyIdKey`, `secretAccessKeyKey`).
+  Set `bucketEndpoint: true` for a trusted HTTPS domain already bound to the
+  configured bucket. Disable `pathStyle` and `insecure` and match the regional
+  signing and bucket settings on the Core storage integration.
 - `service` (`type`, `port`), `ingress` (`enabled`, `className`, `annotations`,
   `tlsSecretName`), `resources`, `nodeSelector`, `tolerations`, `affinity`.
 - Probes run against the dedicated internal health listener (`:8091` `/healthz`

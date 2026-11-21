@@ -355,6 +355,7 @@ appGateway:
     region: us-east-1
     prefix: ""
     pathStyle: true
+    bucketEndpoint: false
     insecure: false
     # Required when enabled. Holds access-key-id and secret-access-key keys.
     existingSecret: ""

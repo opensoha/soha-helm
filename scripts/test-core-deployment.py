@@ -207,6 +207,22 @@ class AppHostingDynamic(unittest.TestCase):
         )
         self.assertEqual(metrics, expected + "      ports:\n        - protocol: TCP\n          port: 9090\n")
 
+    def test_gateway_bucket_endpoint_requires_verified_virtual_host(self):
+        values = self.values()
+        values["appHostingDynamic"]["enabled"] = False
+        s3 = values["appGateway"]["s3"]
+        s3.update(endpoint="https://objects.example.test", pathStyle=False, bucketEndpoint=True)
+        result = render(values)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('name: SOHA_APP_GATEWAY_S3_BUCKET_ENDPOINT\n              value: "true"', result.stdout)
+        for conflicts in ({"pathStyle": True}, {"insecure": True}, {"endpoint": "http://objects.example.test"}):
+            previous = dict(s3)
+            s3.update(conflicts)
+            result = render(values)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("appGateway.s3.bucketEndpoint", result.stderr)
+            s3.update(previous)
+
     def test_fail_closed(self):
         mutations = (
             lambda v: v["appHostingDynamic"].update(appDataExistingSecret=""),

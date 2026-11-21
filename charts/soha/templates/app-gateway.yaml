@@ -1,0 +1,340 @@
+{{- if .Values.appGateway.enabled }}
+{{- $g := .Values.appGateway }}
+{{- $s3 := default dict $g.s3 }}
+{{- $tls := default dict $g.tls }}
+{{- $svc := default dict $g.service }}
+{{- $ing := default dict $g.ingress }}
+{{- range $forbidden := list "gatewayToken" "token" "cookieSecret" "sessionSecret" "secret" }}
+{{- if hasKey $g $forbidden }}{{ fail (printf "appGateway.%s is forbidden; supply credentials only via appGateway.existingSecret" $forbidden) }}{{ end }}
+{{- end }}
+{{- range $forbidden := list "accessKeyId" "secretAccessKey" "accessKey" "secretKey" "credentials" }}
+{{- if hasKey $s3 $forbidden }}{{ fail (printf "appGateway.s3.%s is forbidden; supply S3 credentials only via appGateway.s3.existingSecret" $forbidden) }}{{ end }}
+{{- end }}
+{{- range $forbidden := list "cert" "key" "tlsCert" "tlsKey" }}
+{{- if hasKey $tls $forbidden }}{{ fail (printf "appGateway.tls.%s is forbidden; supply TLS material only via appGateway.tls.existingSecret" $forbidden) }}{{ end }}
+{{- end }}
+{{- $appsDomain := trim (default "" $g.appsDomain) }}
+{{- if not $appsDomain }}{{ fail "appGateway.appsDomain is required when appGateway.enabled=true" }}{{ end }}
+{{- if not (regexMatch "^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$" $appsDomain) }}
+{{- fail "appGateway.appsDomain must be a bare DNS domain (for example apps.example.com) without wildcard prefix, scheme, or path" }}
+{{- end }}
+{{- $publicCoreUrl := trim (default "" $g.publicCoreUrl) }}
+{{- if not $publicCoreUrl }}{{ fail "appGateway.publicCoreUrl is required when appGateway.enabled=true" }}{{ end }}
+{{- if not (regexMatch "^https?://[^\\s]+$" $publicCoreUrl) }}{{ fail "appGateway.publicCoreUrl must be an http(s) URL" }}{{ end }}
+{{- $existingSecret := trim (default "" $g.existingSecret) }}
+{{- if not $existingSecret }}{{ fail "appGateway.existingSecret is required when appGateway.enabled=true; raw inline secrets are forbidden" }}{{ end }}
+{{- $coreConfigSecret := printf "%s-config" (include "soha.fullname" .) }}
+{{- if eq $existingSecret $coreConfigSecret }}{{ fail "appGateway.existingSecret must be a dedicated Secret separate from the control-plane config Secret" }}{{ end }}
+{{- $gatewayTokenKey := trim (default "gateway-token" $g.gatewayTokenKey) }}
+{{- $cookieSecretKey := trim (default "cookie-secret" $g.cookieSecretKey) }}
+{{- if or (not (regexMatch "^[A-Za-z0-9._-]+$" $gatewayTokenKey)) (not (regexMatch "^[A-Za-z0-9._-]+$" $cookieSecretKey)) (eq $gatewayTokenKey $cookieSecretKey) }}
+{{- fail "appGateway.gatewayTokenKey and appGateway.cookieSecretKey must be distinct valid Secret key names" }}
+{{- end }}
+{{- $s3Endpoint := trim (default "" $s3.endpoint) }}
+{{- if not $s3Endpoint }}{{ fail "appGateway.s3.endpoint is required when appGateway.enabled=true" }}{{ end }}
+{{- if not (regexMatch "^https?://[^\\s]+$" $s3Endpoint) }}{{ fail "appGateway.s3.endpoint must be an http(s) URL" }}{{ end }}
+{{- $s3Bucket := trim (default "" $s3.bucket) }}
+{{- if not $s3Bucket }}{{ fail "appGateway.s3.bucket is required when appGateway.enabled=true" }}{{ end }}
+{{- $s3ExistingSecret := trim (default "" $s3.existingSecret) }}
+{{- if not $s3ExistingSecret }}{{ fail "appGateway.s3.existingSecret is required when appGateway.enabled=true; raw inline S3 credentials are forbidden" }}{{ end }}
+{{- if eq $s3ExistingSecret $coreConfigSecret }}{{ fail "appGateway.s3.existingSecret must be a dedicated Secret separate from the control-plane config Secret" }}{{ end }}
+{{- $accessKeyIdKey := trim (default "access-key-id" $s3.accessKeyIdKey) }}
+{{- $secretAccessKeyKey := trim (default "secret-access-key" $s3.secretAccessKeyKey) }}
+{{- if or (not (regexMatch "^[A-Za-z0-9._-]+$" $accessKeyIdKey)) (not (regexMatch "^[A-Za-z0-9._-]+$" $secretAccessKeyKey)) (eq $accessKeyIdKey $secretAccessKeyKey) }}
+{{- fail "appGateway.s3.accessKeyIdKey and appGateway.s3.secretAccessKeyKey must be distinct valid Secret key names" }}
+{{- end }}
+{{- $coreUrl := default (printf "http://%s:%v" (include "soha.fullname" .) .Values.service.port) (trim (default "" $g.coreUrl)) }}
+{{- if not (regexMatch "^https?://[^\\s]+$" $coreUrl) }}{{ fail "appGateway.coreUrl must be an http(s) URL" }}{{ end }}
+{{- $publicScheme := default "https" (trim (default "" $g.publicScheme)) }}
+{{- $decisionCacheTtl := default "0s" (trim (default "" $g.decisionCacheTtl)) }}
+{{- $s3Region := default "us-east-1" (trim (default "" $s3.region)) }}
+{{- $s3Prefix := trim (default "" $s3.prefix) }}
+{{- $s3PathStyle := true }}
+{{- if hasKey $s3 "pathStyle" }}{{- $s3PathStyle = ternary true false $s3.pathStyle }}{{- end }}
+{{- $s3Insecure := false }}
+{{- if hasKey $s3 "insecure" }}{{- $s3Insecure = ternary true false $s3.insecure }}{{- end }}
+{{- $httpRedirectPort := int (default 0 $g.httpRedirectPort) }}
+{{- if or (eq $httpRedirectPort 8090) (eq $httpRedirectPort 8091) }}
+{{- fail "appGateway.httpRedirectPort cannot collide with listener port 8090 or health port 8091" }}
+{{- end }}
+{{- $tlsSecret := trim (default "" $tls.existingSecret) }}
+{{- $tlsCertKey := trim (default "tls.crt" $tls.certKey) }}
+{{- $tlsKeyKey := trim (default "tls.key" $tls.keyKey) }}
+{{- if and $tlsSecret (or (not (regexMatch "^[A-Za-z0-9._-]+$" $tlsCertKey)) (not (regexMatch "^[A-Za-z0-9._-]+$" $tlsKeyKey)) (eq $tlsCertKey $tlsKeyKey)) }}
+{{- fail "appGateway.tls.certKey and appGateway.tls.keyKey must be distinct valid Secret key names" }}
+{{- end }}
+{{- $secretRevision := trim (default "" $g.secretRevision) }}
+{{- $serviceType := default "ClusterIP" $svc.type }}
+{{- $servicePort := int (default 8090 $svc.port) }}
+{{- $name := include "soha.appGatewayName" . }}
+{{- $checksumPayload := dict
+  "appsDomain" $appsDomain
+  "publicScheme" $publicScheme
+  "httpRedirectPort" $httpRedirectPort
+  "publicCoreUrl" $publicCoreUrl
+  "coreUrl" $coreUrl
+  "trustedProxies" (default list $g.trustedProxies)
+  "decisionCacheTtl" $decisionCacheTtl
+  "existingSecret" $existingSecret
+  "gatewayTokenKey" $gatewayTokenKey
+  "cookieSecretKey" $cookieSecretKey
+  "secretRevision" $secretRevision
+  "tls" (dict "existingSecret" $tlsSecret "certKey" $tlsCertKey "keyKey" $tlsKeyKey)
+  "s3" (dict
+    "endpoint" $s3Endpoint
+    "bucket" $s3Bucket
+    "region" $s3Region
+    "prefix" $s3Prefix
+    "pathStyle" $s3PathStyle
+    "insecure" $s3Insecure
+    "existingSecret" $s3ExistingSecret
+    "accessKeyIdKey" $accessKeyIdKey
+    "secretAccessKeyKey" $secretAccessKeyKey
+  )
+}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    app.kubernetes.io/component: app-gateway
+    {{- include "soha.labels" . | nindent 4 }}
+spec:
+  replicas: {{ default 2 $g.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: app-gateway
+      {{- include "soha.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ $checksumPayload | toJson | sha256sum | quote }}
+        {{- if $secretRevision }}
+        soha.io/app-gateway-secret-revision: {{ $secretRevision | quote }}
+        {{- end }}
+      labels:
+        app.kubernetes.io/component: app-gateway
+        {{- include "soha.selectorLabels" . | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: app-gateway
+          image: {{ include "soha.appGatewayImage" . | quote }}
+          imagePullPolicy: {{ include "soha.appGatewayImagePullPolicy" . }}
+          command: ["/usr/local/bin/soha-app-gateway"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          env:
+            - name: SOHA_APP_GATEWAY_LISTEN_ADDR
+              value: ":8090"
+            {{- if gt $httpRedirectPort 0 }}
+            - name: SOHA_APP_GATEWAY_HTTP_REDIRECT_ADDR
+              value: {{ printf ":%d" $httpRedirectPort | quote }}
+            {{- end }}
+            - name: SOHA_APP_GATEWAY_HEALTH_ADDR
+              value: ":8091"
+            - name: SOHA_APP_GATEWAY_APPS_DOMAIN
+              value: {{ $appsDomain | quote }}
+            - name: SOHA_APP_GATEWAY_PUBLIC_SCHEME
+              value: {{ $publicScheme | quote }}
+            {{- if $tlsSecret }}
+            - name: SOHA_APP_GATEWAY_TLS_CERT_FILE
+              value: /run/secrets/soha-app-gateway-tls/tls.crt
+            - name: SOHA_APP_GATEWAY_TLS_KEY_FILE
+              value: /run/secrets/soha-app-gateway-tls/tls.key
+            {{- end }}
+            {{- if $g.trustedProxies }}
+            - name: SOHA_APP_GATEWAY_TRUSTED_PROXIES
+              value: {{ join "," $g.trustedProxies | quote }}
+            {{- end }}
+            - name: SOHA_APP_GATEWAY_CORE_URL
+              value: {{ $coreUrl | quote }}
+            - name: SOHA_APP_GATEWAY_PUBLIC_CORE_URL
+              value: {{ $publicCoreUrl | quote }}
+            - name: SOHA_APP_GATEWAY_TOKEN_FILE
+              value: /run/secrets/soha-app-gateway/gateway-token
+            - name: SOHA_APP_GATEWAY_COOKIE_SECRET_FILE
+              value: /run/secrets/soha-app-gateway/cookie-secret
+            - name: SOHA_APP_GATEWAY_S3_ENDPOINT
+              value: {{ $s3Endpoint | quote }}
+            - name: SOHA_APP_GATEWAY_S3_BUCKET
+              value: {{ $s3Bucket | quote }}
+            - name: SOHA_APP_GATEWAY_S3_REGION
+              value: {{ $s3Region | quote }}
+            - name: SOHA_APP_GATEWAY_S3_PREFIX
+              value: {{ $s3Prefix | quote }}
+            - name: SOHA_APP_GATEWAY_S3_PATH_STYLE
+              value: {{ ternary "true" "false" $s3PathStyle | quote }}
+            - name: SOHA_APP_GATEWAY_S3_INSECURE
+              value: {{ ternary "true" "false" $s3Insecure | quote }}
+            - name: SOHA_APP_GATEWAY_S3_ACCESS_KEY_FILE
+              value: /run/secrets/soha-app-gateway-s3/access-key-id
+            - name: SOHA_APP_GATEWAY_S3_SECRET_KEY_FILE
+              value: /run/secrets/soha-app-gateway-s3/secret-access-key
+            - name: SOHA_APP_GATEWAY_DECISION_CACHE_TTL
+              value: {{ $decisionCacheTtl | quote }}
+          ports:
+            - name: http
+              containerPort: 8090
+            {{- if gt $httpRedirectPort 0 }}
+            - name: http-redirect
+              containerPort: {{ $httpRedirectPort }}
+            {{- end }}
+            - name: health
+              containerPort: 8091
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: health
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            {{- toYaml $g.resources | nindent 12 }}
+          volumeMounts:
+            - name: gateway-secrets
+              mountPath: /run/secrets/soha-app-gateway
+              readOnly: true
+            - name: s3-secrets
+              mountPath: /run/secrets/soha-app-gateway-s3
+              readOnly: true
+            {{- if $tlsSecret }}
+            - name: gateway-tls
+              mountPath: /run/secrets/soha-app-gateway-tls
+              readOnly: true
+            {{- end }}
+            - name: tmp
+              mountPath: /tmp
+      {{- with $g.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $g.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $g.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: gateway-secrets
+          secret:
+            secretName: {{ $existingSecret | quote }}
+            defaultMode: 0440
+            items:
+              - key: {{ $gatewayTokenKey | quote }}
+                path: gateway-token
+              - key: {{ $cookieSecretKey | quote }}
+                path: cookie-secret
+        - name: s3-secrets
+          secret:
+            secretName: {{ $s3ExistingSecret | quote }}
+            defaultMode: 0440
+            items:
+              - key: {{ $accessKeyIdKey | quote }}
+                path: access-key-id
+              - key: {{ $secretAccessKeyKey | quote }}
+                path: secret-access-key
+        {{- if $tlsSecret }}
+        - name: gateway-tls
+          secret:
+            secretName: {{ $tlsSecret | quote }}
+            defaultMode: 0440
+            items:
+              - key: {{ $tlsCertKey | quote }}
+                path: tls.crt
+              - key: {{ $tlsKeyKey | quote }}
+                path: tls.key
+        {{- end }}
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    app.kubernetes.io/component: app-gateway
+    {{- include "soha.labels" . | nindent 4 }}
+spec:
+  type: {{ $serviceType }}
+  selector:
+    app.kubernetes.io/component: app-gateway
+    {{- include "soha.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ $servicePort }}
+      targetPort: http
+    {{- if gt $httpRedirectPort 0 }}
+    - name: http-redirect
+      port: {{ $httpRedirectPort }}
+      targetPort: http-redirect
+    {{- end }}
+{{- if $ing.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $name }}
+  labels:
+    app.kubernetes.io/component: app-gateway
+    {{- include "soha.labels" . | nindent 4 }}
+  {{- with $ing.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if $ing.className }}
+  ingressClassName: {{ $ing.className | quote }}
+  {{- end }}
+  {{- if $ing.tlsSecretName }}
+  tls:
+    - hosts:
+        - {{ printf "*.%s" $appsDomain | quote }}
+      secretName: {{ $ing.tlsSecretName | quote }}
+  {{- end }}
+  rules:
+    - host: {{ printf "*.%s" $appsDomain | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $name }}
+                port:
+                  number: {{ $servicePort }}
+{{- end }}
+{{- end }}

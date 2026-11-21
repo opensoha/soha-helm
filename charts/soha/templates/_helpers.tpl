@@ -424,3 +424,32 @@ kubernetes:
 {{- define "soha.hindsightName" -}}
 {{- printf "%s-hindsight" (include "soha.fullname" . | trunc 53 | trimSuffix "-") -}}
 {{- end -}}
+
+{{- define "soha.appGatewayName" -}}
+{{- printf "%s-app-gateway" (include "soha.fullname" . | trunc 51 | trimSuffix "-") -}}
+{{- end -}}
+
+{{- define "soha.appGatewayImage" -}}
+{{- $img := .Values.appGateway.image -}}
+{{- if kindIs "string" $img -}}
+{{- $trimmed := trim $img -}}
+{{- if $trimmed -}}{{ $trimmed }}{{- else -}}{{ include "soha.image" . }}{{- end -}}
+{{- else -}}
+{{- $repo := default .Values.image.repository (trim (default "" $img.repository)) -}}
+{{- $tag := default (default .Chart.AppVersion .Values.image.tag) (trim (default "" $img.tag)) -}}
+{{- if hasPrefix "sha256:" $tag -}}
+{{- printf "%s@%s" $repo $tag -}}
+{{- else -}}
+{{- printf "%s:%s" $repo $tag -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "soha.appGatewayImagePullPolicy" -}}
+{{- $img := .Values.appGateway.image -}}
+{{- if kindIs "string" $img -}}
+{{- .Values.image.pullPolicy -}}
+{{- else -}}
+{{- default .Values.image.pullPolicy (trim (default "" $img.pullPolicy)) -}}
+{{- end -}}
+{{- end -}}

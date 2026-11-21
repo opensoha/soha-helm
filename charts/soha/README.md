@@ -351,5 +351,81 @@ proof before uninstalling workloads; Helm uninstall is not a proven drain or
 safe stop. An upgrade reapplies `radiusRuntime.replicas` and may replace the
 Pod template: drain and stop the managed pool before such maintenance, then
 renew changed pins before resuming. Do not delete retained PVCs or credentials as an implicit uninstall
-step. A reinstall/replacement UID or template change requires renewed installer
+ step. A reinstall/replacement UID or template change requires renewed installer
 pins; never substitute fixture values from `tests/radius-values.json`.
+
+## Optional Workspace App Hosting gateway (`appGateway`)
+
+`appGateway.enabled` defaults to `false`. When enabled, the chart deploys an
+independent `<fullname>-app-gateway` `Deployment` (default `2` replicas),
+`Service` (`ClusterIP` on port `8090`), and optional wildcard `Ingress`
+(`*.<appsDomain>`) so browser traffic to hosted workspace apps never traverses
+the Soha Core control-plane Pod.
+
+Supply an image build containing `/usr/local/bin/soha-app-gateway` (either via
+the chart's main `image` or an explicit `appGateway.image` override; releases
+through `v0.1.12` predate `soha-app-gateway`) and apply the matching Core
+PostgreSQL migrations (`0154_app_hosting.sql`) before enabling the gateway.
+
+All gateway and S3 credentials are Secret-backed only; passing inline secret
+values in Helm values fails schema/template validation:
+
+1. `appGateway.existingSecret` (required): dedicated Secret in the release
+   namespace holding `gateway-token` (customizable via `gatewayTokenKey`, paired
+   with Core's rotated App Hosting gateway token) and `cookie-secret`
+   (customizable via `cookieSecretKey`, 32+ random bytes for Host-only session
+   and auth-state signing).
+2. `appGateway.s3.existingSecret` (required): dedicated Secret holding
+   least-privilege read-only object-storage credentials (`access-key-id` and
+   `secret-access-key`, customizable via `accessKeyIdKey` and
+   `secretAccessKeyKey`).
+
+```yaml
+image:
+  repository: ghcr.io/opensoha/soha
+  tag: local
+appGateway:
+  enabled: true
+  replicas: 2
+  appsDomain: apps.example.com
+  publicCoreUrl: https://soha.example.com
+  trustedProxies:
+    - 10.42.0.0/16
+  decisionCacheTtl: 0s
+  existingSecret: soha-app-gateway-auth
+  s3:
+    endpoint: https://minio.internal:9000
+    bucket: soha-hosted-apps
+    region: us-east-1
+    prefix: hosted-apps
+    pathStyle: true
+    insecure: false
+    existingSecret: soha-app-gateway-s3
+  ingress:
+    enabled: true
+    className: nginx
+    tlsSecretName: soha-apps-wildcard-tls
+```
+
+ Key parameters under `appGateway`:
+
+- `replicas` (default `2`), `image` (optional `{repository, tag, pullPolicy}`
+  override defaulting to the chart's main image).
+- `appsDomain` (bare domain such as `apps.example.com`; wildcard Ingress renders
+  `*.<appsDomain>`), `publicScheme` (`https` by default), `httpRedirectPort`
+  (`0` disabled by default; when `> 0`, enables `308` HTTP-to-HTTPS redirect).
+- `publicCoreUrl` (browser-facing Core URL for SSO login redirects), `coreUrl`
+  (internal Core URL for ticket exchange and per-request access checks; defaults
+  to `http://<fullname>:<service.port>`), `trustedProxies`, `decisionCacheTtl`
+  (`0s` by default for immediate per-request revocation across replicas).
+- `existingSecret`, `gatewayTokenKey` (`gateway-token`), `cookieSecretKey`
+  (`cookie-secret`), `secretRevision` (bump to roll Pods after in-place Secret
+  rotation), and optional direct `tls` (`existingSecret`, `certKey`, `keyKey`).
+- `s3` (`endpoint`, `bucket`, `region`, `prefix`, `pathStyle`, `insecure`,
+  `existingSecret`, `accessKeyIdKey`, `secretAccessKeyKey`).
+- `service` (`type`, `port`), `ingress` (`enabled`, `className`, `annotations`,
+  `tlsSecretName`), `resources`, `nodeSelector`, `tolerations`, `affinity`.
+- Probes run against the dedicated internal health listener (`:8091` `/healthz`
+  and `/readyz`), while Pods run non-root (`10001:10001`), read-only root
+  filesystem, `RuntimeDefault` seccomp, all Linux capabilities dropped, and
+  `automountServiceAccountToken: false`.

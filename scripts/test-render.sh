@@ -672,3 +672,151 @@ python3 "$root_dir/scripts/test-core-deployment.py"
 
 # Optional service assets preserve default rendering and reject missing inputs.
 sh "$root_dir/scripts/test-optional-runtimes.sh"
+
+# Optional Workspace App Hosting gateway (appGateway) render & fail-closed checks.
+if grep -q 'soha-app-gateway\|component: app-gateway\|SOHA_APP_GATEWAY_' "$default_render"; then
+  echo "default render unexpectedly included appGateway resources" >&2
+  exit 1
+fi
+
+render_app_gateway() {
+  helm template soha "$root_dir/charts/soha" \
+    --set appGateway.enabled=true \
+    --set-string appGateway.appsDomain=apps.example.com \
+    --set-string appGateway.publicCoreUrl=https://soha.example.com \
+    --set-string appGateway.existingSecret=soha-app-gateway-auth \
+    --set-string appGateway.s3.endpoint=https://minio.internal:9000 \
+    --set-string appGateway.s3.bucket=soha-hosted-apps \
+    --set-string appGateway.s3.prefix=hosted-apps \
+    --set-string appGateway.s3.existingSecret=soha-app-gateway-s3 \
+    --set 'appGateway.trustedProxies={10.42.0.0/16,10.43.0.0/16}' \
+    --set appGateway.ingress.enabled=true \
+    --set-string appGateway.ingress.className=nginx \
+    --set-string appGateway.ingress.tlsSecretName=soha-apps-wildcard-tls \
+    "$@"
+}
+
+app_gateway_render="$tmp_dir/app-gateway.yaml"
+render_app_gateway --show-only templates/app-gateway.yaml >"$app_gateway_render"
+grep -q '^kind: Deployment$' "$app_gateway_render"
+grep -q '^kind: Service$' "$app_gateway_render"
+grep -q '^kind: Ingress$' "$app_gateway_render"
+grep -q '^  name: soha-app-gateway$' "$app_gateway_render"
+grep -q '^  replicas: 2$' "$app_gateway_render"
+grep -q 'app.kubernetes.io/component: app-gateway' "$app_gateway_render"
+grep -q 'automountServiceAccountToken: false' "$app_gateway_render"
+grep -q 'runAsNonRoot: true' "$app_gateway_render"
+grep -q 'runAsUser: 10001' "$app_gateway_render"
+grep -q 'runAsGroup: 10001' "$app_gateway_render"
+grep -q 'fsGroup: 10001' "$app_gateway_render"
+grep -q 'readOnlyRootFilesystem: true' "$app_gateway_render"
+grep -q 'allowPrivilegeEscalation: false' "$app_gateway_render"
+grep -q 'type: RuntimeDefault' "$app_gateway_render"
+grep -A2 'drop:' "$app_gateway_render" | grep -q -- '- ALL'
+grep -q 'command: \["/usr/local/bin/soha-app-gateway"\]' "$app_gateway_render"
+grep -A1 'name: SOHA_APP_GATEWAY_LISTEN_ADDR' "$app_gateway_render" | grep -q 'value: ":8090"'
+grep -A1 'name: SOHA_APP_GATEWAY_HEALTH_ADDR' "$app_gateway_render" | grep -q 'value: ":8091"'
+grep -A1 'name: SOHA_APP_GATEWAY_APPS_DOMAIN' "$app_gateway_render" | grep -q 'value: "apps.example.com"'
+grep -A1 'name: SOHA_APP_GATEWAY_PUBLIC_SCHEME' "$app_gateway_render" | grep -q 'value: "https"'
+grep -A1 'name: SOHA_APP_GATEWAY_TRUSTED_PROXIES' "$app_gateway_render" | grep -q 'value: "10.42.0.0/16,10.43.0.0/16"'
+grep -A1 'name: SOHA_APP_GATEWAY_CORE_URL' "$app_gateway_render" | grep -q 'value: "http://soha:8080"'
+grep -A1 'name: SOHA_APP_GATEWAY_PUBLIC_CORE_URL' "$app_gateway_render" | grep -q 'value: "https://soha.example.com"'
+grep -A1 'name: SOHA_APP_GATEWAY_TOKEN_FILE' "$app_gateway_render" | grep -q 'value: /run/secrets/soha-app-gateway/gateway-token'
+grep -A1 'name: SOHA_APP_GATEWAY_COOKIE_SECRET_FILE' "$app_gateway_render" | grep -q 'value: /run/secrets/soha-app-gateway/cookie-secret'
+grep -A1 'name: SOHA_APP_GATEWAY_S3_ENDPOINT' "$app_gateway_render" | grep -q 'value: "https://minio.internal:9000"'
+grep -A1 'name: SOHA_APP_GATEWAY_S3_BUCKET' "$app_gateway_render" | grep -q 'value: "soha-hosted-apps"'
+grep -A1 'name: SOHA_APP_GATEWAY_S3_REGION' "$app_gateway_render" | grep -q 'value: "us-east-1"'
+grep -A1 'name: SOHA_APP_GATEWAY_S3_PREFIX' "$app_gateway_render" | grep -q 'value: "hosted-apps"'
+grep -A1 'name: SOHA_APP_GATEWAY_S3_PATH_STYLE' "$app_gateway_render" | grep -q 'value: "true"'
+grep -A1 'name: SOHA_APP_GATEWAY_S3_INSECURE' "$app_gateway_render" | grep -q 'value: "false"'
+grep -A1 'name: SOHA_APP_GATEWAY_S3_ACCESS_KEY_FILE' "$app_gateway_render" | grep -q 'value: /run/secrets/soha-app-gateway-s3/access-key-id'
+grep -A1 'name: SOHA_APP_GATEWAY_S3_SECRET_KEY_FILE' "$app_gateway_render" | grep -q 'value: /run/secrets/soha-app-gateway-s3/secret-access-key'
+grep -A1 'name: SOHA_APP_GATEWAY_DECISION_CACHE_TTL' "$app_gateway_render" | grep -q 'value: "0s"'
+grep -q 'containerPort: 8091' "$app_gateway_render"
+grep -q 'path: /readyz' "$app_gateway_render"
+grep -q 'path: /healthz' "$app_gateway_render"
+grep -q 'secretName: "soha-app-gateway-auth"' "$app_gateway_render"
+grep -q 'secretName: "soha-app-gateway-s3"' "$app_gateway_render"
+grep -q 'host: "\*\.apps\.example\.com"' "$app_gateway_render"
+grep -q 'secretName: "soha-apps-wildcard-tls"' "$app_gateway_render"
+grep -A4 'service:' "$app_gateway_render" | grep -q 'number: 8090'
+if awk '/^kind: Service$/,/^---$/' "$app_gateway_render" | grep -q '8091\|name: health'; then
+  echo "appGateway Service unexpectedly exposed internal health port 8091" >&2
+  exit 1
+fi
+
+# Verify image override, direct TLS, HTTP redirect port, and 63-char name truncation.
+app_gateway_tls="$tmp_dir/app-gateway-tls.yaml"
+long_gw_override=abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk
+render_app_gateway --show-only templates/app-gateway.yaml \
+  --set-string fullnameOverride="$long_gw_override" \
+  --set-string appGateway.image.repository=ghcr.io/opensoha/soha-app-gateway \
+  --set-string appGateway.image.tag=candidate \
+  --set-string appGateway.image.pullPolicy=Always \
+  --set appGateway.httpRedirectPort=8080 \
+  --set-string appGateway.tls.existingSecret=soha-app-gateway-direct-tls \
+  --set appGateway.ingress.enabled=false >"$app_gateway_tls"
+expected_gw_name="$(printf '%s' "$long_gw_override" | cut -c1-51)-app-gateway"
+grep -q "^  name: $expected_gw_name$" "$app_gateway_tls"
+grep -q 'image: "ghcr.io/opensoha/soha-app-gateway:candidate"' "$app_gateway_tls"
+grep -q 'imagePullPolicy: Always' "$app_gateway_tls"
+grep -A1 'name: SOHA_APP_GATEWAY_HTTP_REDIRECT_ADDR' "$app_gateway_tls" | grep -q 'value: ":8080"'
+grep -A1 'name: SOHA_APP_GATEWAY_TLS_CERT_FILE' "$app_gateway_tls" | grep -q 'value: /run/secrets/soha-app-gateway-tls/tls.crt'
+grep -A1 'name: SOHA_APP_GATEWAY_TLS_KEY_FILE' "$app_gateway_tls" | grep -q 'value: /run/secrets/soha-app-gateway-tls/tls.key'
+if grep -q '^kind: Ingress$' "$app_gateway_tls"; then
+  echo "appGateway rendered Ingress while appGateway.ingress.enabled=false" >&2
+  exit 1
+fi
+
+# Replicas scaling keeps checksum/config stable; config/secretRevision updates roll Pods.
+app_gateway_scaled="$tmp_dir/app-gateway-scaled.yaml"
+app_gateway_rotated="$tmp_dir/app-gateway-rotated.yaml"
+render_app_gateway --show-only templates/app-gateway.yaml --set appGateway.replicas=4 >"$app_gateway_scaled"
+render_app_gateway --show-only templates/app-gateway.yaml \
+  --set-string appGateway.secretRevision=rev-2 \
+  --set-string appGateway.gatewayTokenKey=custom-gw-token \
+  --set-string appGateway.s3.accessKeyIdKey=custom-ak >"$app_gateway_rotated"
+gw_checksum=$(checksum "$app_gateway_render")
+gw_scaled_checksum=$(checksum "$app_gateway_scaled")
+gw_rotated_checksum=$(checksum "$app_gateway_rotated")
+if [ "${#gw_checksum}" -ne 64 ] || [ "$gw_checksum" != "$gw_scaled_checksum" ] || [ "$gw_checksum" = "$gw_rotated_checksum" ]; then
+  echo "appGateway checksum did not track config/secretRevision independently of replicas" >&2
+  exit 1
+fi
+grep -q 'soha.io/app-gateway-secret-revision: "rev-2"' "$app_gateway_rotated"
+grep -q 'key: "custom-gw-token"' "$app_gateway_rotated"
+grep -q 'key: "custom-ak"' "$app_gateway_rotated"
+
+# Fail-closed checks for missing required fields, malformed domain, and raw inline secrets.
+for missing_flag in \
+  'appGateway.appsDomain=' \
+  'appGateway.appsDomain=*.apps.example.com' \
+  'appGateway.appsDomain=https://apps.example.com' \
+  'appGateway.publicCoreUrl=' \
+  'appGateway.existingSecret=' \
+  'appGateway.existingSecret=soha-config' \
+  'appGateway.s3.endpoint=' \
+  'appGateway.s3.bucket=' \
+  'appGateway.s3.existingSecret='
+do
+  if render_app_gateway --set-string "$missing_flag" >"$tmp_dir/invalid-app-gateway.yaml" 2>"$tmp_dir/invalid-app-gateway.err"; then
+    echo "appGateway accepted invalid or missing required setting: $missing_flag" >&2
+    exit 1
+  fi
+done
+render_app_gateway --set-string appGateway.existingSecret= >"$tmp_dir/invalid-gw-secret.yaml" 2>"$tmp_dir/invalid-gw-secret.err" || true
+grep -q 'appGateway.existingSecret is required' "$tmp_dir/invalid-gw-secret.err"
+render_app_gateway --set-string appGateway.appsDomain= >"$tmp_dir/invalid-gw-domain.yaml" 2>"$tmp_dir/invalid-gw-domain.err" || true
+grep -q 'appGateway.appsDomain is required' "$tmp_dir/invalid-gw-domain.err"
+
+for inline_secret in \
+  'appGateway.gatewayToken=inline-secret' \
+  'appGateway.cookieSecret=inline-cookie-secret' \
+  'appGateway.s3.accessKeyId=inline-ak' \
+  'appGateway.s3.secretAccessKey=inline-sk'
+do
+  if render_app_gateway --set-string "$inline_secret" >"$tmp_dir/inline-secret.yaml" 2>/dev/null; then
+    echo "appGateway accepted raw inline secret: $inline_secret" >&2
+    exit 1
+  fi
+done

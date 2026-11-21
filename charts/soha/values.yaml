@@ -321,3 +321,60 @@ hindsight:
   resources:
     requests: {cpu: 100m, memory: 512Mi}
     limits: {cpu: "2", memory: 2Gi}
+
+# Optional Workspace App Hosting data-plane gateway; serves *.appsDomain and never runs inside Core.
+appGateway:
+  enabled: false
+  replicas: 2
+  # Optional image override (string "repo:tag" or repository/tag/pullPolicy map); defaults to the chart's main image.
+  image:
+    repository: ""
+    tag: ""
+    pullPolicy: ""
+  appsDomain: ""
+  publicScheme: https
+  httpRedirectPort: 0
+  publicCoreUrl: ""
+  # Empty derives http://<fullname>:<service.port>.
+  coreUrl: ""
+  trustedProxies: []
+  # 0s enforces strict per-request Core authorization checks so audience narrowing/revocation takes effect immediately across replicas.
+  decisionCacheTtl: 0s
+  # Required when enabled. Holds gateway-token and cookie-secret keys (32+ byte secret).
+  existingSecret: ""
+  gatewayTokenKey: gateway-token
+  cookieSecretKey: cookie-secret
+  secretRevision: ""
+  tls:
+    existingSecret: ""
+    certKey: tls.crt
+    keyKey: tls.key
+  s3:
+    endpoint: ""
+    bucket: ""
+    region: us-east-1
+    prefix: ""
+    pathStyle: true
+    insecure: false
+    # Required when enabled. Holds access-key-id and secret-access-key keys.
+    existingSecret: ""
+    accessKeyIdKey: access-key-id
+    secretAccessKeyKey: secret-access-key
+  service:
+    type: ClusterIP
+    port: 8090
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    tlsSecretName: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}

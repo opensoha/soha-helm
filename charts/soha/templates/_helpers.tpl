@@ -51,7 +51,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
 
 {{- define "soha.image" -}}
-{{- $tag := default .Chart.AppVersion .Values.image.tag -}}
+{{- $tag := default (printf "v%s" (trimPrefix "v" .Chart.AppVersion)) .Values.image.tag -}}
 {{- printf "%s:%s" .Values.image.repository $tag -}}
 {{- end -}}
 

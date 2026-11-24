@@ -23,6 +23,11 @@ persistence_existing_render="$tmp_dir/persistence-existing.yaml"
 agent_render="$tmp_dir/agent.yaml"
 agent_without_terminal_render="$tmp_dir/agent-without-terminal.yaml"
 standalone_agent_render="$tmp_dir/standalone-agent.yaml"
+hermes_render="$tmp_dir/hermes.yaml"
+hermes_rotated_render="$tmp_dir/hermes-rotated.yaml"
+hermes_external_render="$tmp_dir/hermes-external.yaml"
+hermes_external_v1="$tmp_dir/hermes-external-v1.yaml"
+hermes_external_v2="$tmp_dir/hermes-external-v2.yaml"
 outpost_render="$tmp_dir/outpost.yaml"
 observability_render="$tmp_dir/observability.yaml"
 observability_external_render="$tmp_dir/observability-external.yaml"
@@ -143,6 +148,42 @@ helm template soha-agent "$root_dir/charts/soha-agent" \
   --set 'config.security.allowedActions={platform.deployments.restart}' >"$agent_without_terminal_render"
 helm template soha-agent "$root_dir/charts/soha-agent" \
   --set config.controlPlane.enabled=false >"$standalone_agent_render"
+helm template soha-hermes-agent "$root_dir/charts/soha-hermes-agent" \
+  --set-string secrets.controlPlaneBearerToken=test-runner-token-12345678901234 >"$hermes_render"
+helm template soha-hermes-agent "$root_dir/charts/soha-hermes-agent" \
+  --set-string secrets.controlPlaneExistingSecret.revision=ignored-managed-revision \
+  --set-string secrets.controlPlaneBearerToken=rotated-runner-token-12345678901 >"$hermes_rotated_render"
+hermes_checksum=$(sed -n 's/.*checksum\/secret: "\([0-9a-f]*\)"/\1/p' "$hermes_render")
+hermes_rotated_checksum=$(sed -n 's/.*checksum\/secret: "\([0-9a-f]*\)"/\1/p' "$hermes_rotated_render")
+if [ "${#hermes_checksum}" -ne 64 ] || [ "${#hermes_rotated_checksum}" -ne 64 ] || [ "$hermes_checksum" = "$hermes_rotated_checksum" ]; then
+  echo "Hermes credential change did not roll the workload" >&2
+  exit 1
+fi
+if grep -Fq 'soha.io/control-plane-secret-revision:' "$hermes_rotated_render"; then
+  echo "External Secret revision affected a chart-managed token" >&2
+  exit 1
+fi
+helm template soha-hermes-agent "$root_dir/charts/soha-hermes-agent" >"$hermes_external_render"
+helm template soha-hermes-agent "$root_dir/charts/soha-hermes-agent" \
+  --set-string secrets.controlPlaneExistingSecret.revision=43 >"$hermes_external_v1"
+helm template soha-hermes-agent "$root_dir/charts/soha-hermes-agent" \
+  --set-string secrets.controlPlaneExistingSecret.revision=44 >"$hermes_external_v2"
+grep -Fxq '        soha.io/control-plane-secret-revision: "43"' "$hermes_external_v1"
+grep -Fxq '        soha.io/control-plane-secret-revision: "44"' "$hermes_external_v2"
+sed 's@soha.io/control-plane-secret-revision: "43"@soha.io/control-plane-secret-revision: "44"@' \
+  "$hermes_external_v1" | cmp - "$hermes_external_v2"
+if grep -Fq 'soha.io/control-plane-secret-revision:' "$hermes_external_render"; then
+  echo "The default Hermes Secret reference altered the Pod template" >&2
+  exit 1
+fi
+for manifest in "$hermes_external_render" "$hermes_external_v1" "$hermes_external_v2"; do
+  grep -Fq 'name: soha-config' "$manifest"
+  grep -Fq 'key: execution-runner-token' "$manifest"
+  if grep -q '^kind: Secret$' "$manifest"; then
+    echo "An externally managed Hermes token unexpectedly rendered a Secret" >&2
+    exit 1
+  fi
+done
 helm template soha-outpost "$root_dir/charts/soha-agent" \
   --set mode=outpost \
   --set outpostRuntime.accessMode=ReadWriteMany \

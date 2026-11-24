@@ -6,11 +6,22 @@ metadata:
     {{- include "soha-hermes-agent.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
+  {{- if .Values.persistence.enabled }}
+  strategy:
+    type: Recreate
+  {{- end }}
   selector:
     matchLabels:
       {{- include "soha-hermes-agent.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+      {{- if .Values.secrets.controlPlaneBearerToken }}
+      annotations:
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum | quote }}
+      {{- else if .Values.secrets.controlPlaneExistingSecret.revision }}
+      annotations:
+        soha.io/control-plane-secret-revision: {{ .Values.secrets.controlPlaneExistingSecret.revision | quote }}
+      {{- end }}
       labels:
         {{- include "soha-hermes-agent.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/part-of: opensoha
@@ -84,6 +95,18 @@ spec:
           volumeMounts:
             - name: runtime
               mountPath: {{ .Values.controlPlane.workspaceRoot | quote }}
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       volumes:

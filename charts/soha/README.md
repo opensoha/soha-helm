@@ -456,7 +456,21 @@ Prerequisites are administrator/Operator-provisioned and pre-existing:
   `buildRegistrySecret`, `buildkitAddress`, `buildkitTLSSecret`, and
   `buildSourceOrigin` (the MinIO HTTPS origin) are required build inputs.
   Provide the client and both base images as digest references.
-  `buildRuntimeClass` is optional.
+
+| Optional field | Behavior |
+| --- | --- |
+| `buildRuntimeClass` | Selects the RuntimeClass for build Jobs when the cluster provides one. |
+| `registryCleanupExistingSecret` | Names a dedicated release-namespace Secret whose fixed `authorization` key enables scoped registry cleanup. Leave unset to preserve shared-repository behavior without cleanup. |
+
+The `authorization` value must be a dedicated credential for the HTTPS registry,
+using either HTTP Basic authentication with base64-encoded credentials or Bearer
+authentication. Scope it to deleting manifests in child repositories owned by
+this installation. Build/publish and pull credentials remain separate and need
+permissions only under the configured `registryRepository` prefix. Registry
+garbage collection performs the physical blob removal after Core deletes the
+manifests. Unsetting `registryCleanupExistingSecret` omits the
+`SOHA_APP_HOSTING_REGISTRY_CLEANUP_AUTHORIZATION` environment variable, keeps
+the shared repository behavior, and leaves legacy images without cleanup.
 
 RBAC: the Core ServiceAccount is bound in `runtimeNamespace` to
 `serving.knative.dev/services` (`get`, `create`, `delete`), `secrets`
@@ -530,6 +544,8 @@ appHostingDynamic:
   pythonBaseImage: registry.example/python@sha256:<python-digest>
   registryRepository: registry.example/apps
   buildRegistrySecret: soha-build-registry
+  # Optional; omit to keep shared-repository behavior without image cleanup.
+  registryCleanupExistingSecret: soha-registry-cleanup
   buildkitAddress: tcp://buildkit.soha-build:1234
   buildkitTLSSecret: soha-buildkit-tls
   buildSourceOrigin: https://minio.example.com

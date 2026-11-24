@@ -175,6 +175,34 @@ class AppHostingDynamic(unittest.TestCase):
         self.assertNotIn("SOHA_APP_HOSTING_BUILD_RUNTIME_CLASS", result.stdout)
         self.assertIn("secretKeyRef:", result.stdout)
 
+    def test_registry_cleanup_authorization_is_secret_backed_when_configured(self):
+        values = self.values()
+        values["appHostingDynamic"]["registryCleanupExistingSecret"] = "soha-registry-cleanup"
+        result = render(values)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(
+            "- name: SOHA_APP_HOSTING_REGISTRY_CLEANUP_AUTHORIZATION\n"
+            "              valueFrom:\n"
+            "                secretKeyRef:\n"
+            '                  name: "soha-registry-cleanup"\n'
+            "                  key: authorization",
+            result.stdout,
+        )
+
+    def test_registry_cleanup_authorization_omitted_when_unset(self):
+        for cleanup_secret in (None, ""):
+            with self.subTest(cleanup_secret=cleanup_secret):
+                values = self.values()
+                if cleanup_secret is None:
+                    values["appHostingDynamic"].pop("registryCleanupExistingSecret", None)
+                else:
+                    values["appHostingDynamic"]["registryCleanupExistingSecret"] = cleanup_secret
+                result = render(values)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertNotIn(
+                    "SOHA_APP_HOSTING_REGISTRY_CLEANUP_AUTHORIZATION", result.stdout
+                )
+
     def test_network_policies_are_retained_by_helm(self):
         result = render(self.values())
         self.assertEqual(result.returncode, 0, result.stderr)

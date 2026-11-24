@@ -120,6 +120,13 @@ spec:
             - {name: SOHA_APP_HOSTING_PYTHON_BASE_IMAGE, value: {{ $h.pythonBaseImage | quote }}}
             - {name: SOHA_APP_HOSTING_REGISTRY_REPOSITORY, value: {{ $h.registryRepository | quote }}}
             - {name: SOHA_APP_HOSTING_BUILD_REGISTRY_SECRET, value: {{ $h.buildRegistrySecret | quote }}}
+            {{- if trim (default "" $h.registryCleanupExistingSecret) }}
+            - name: SOHA_APP_HOSTING_REGISTRY_CLEANUP_AUTHORIZATION
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $h.registryCleanupExistingSecret | quote }}
+                  key: authorization
+            {{- end }}
             - {name: SOHA_APP_HOSTING_BUILDKIT_ADDRESS, value: {{ $h.buildkitAddress | quote }}}
             - {name: SOHA_APP_HOSTING_BUILDKIT_TLS_SECRET, value: {{ $h.buildkitTLSSecret | quote }}}
             - {name: SOHA_APP_HOSTING_BUILD_SOURCE_ORIGIN, value: {{ $h.buildSourceOrigin | quote }}}

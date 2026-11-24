@@ -406,6 +406,9 @@ appHostingDynamic:
   pythonBaseImage: ""
   registryRepository: ""
   buildRegistrySecret: ""
+  # Optional dedicated Secret in the release namespace. The fixed `authorization`
+  # key enables scoped registry cleanup for manifests under registryRepository.
+  registryCleanupExistingSecret: ""
   buildkitAddress: ""
   buildkitTLSSecret: ""
   # Must be an HTTPS origin.

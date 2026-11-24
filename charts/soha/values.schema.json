@@ -1753,6 +1753,10 @@
           "type": "string",
           "maxLength": 253
         },
+        "registryCleanupExistingSecret": {
+          "type": "string",
+          "maxLength": 253
+        },
         "buildkitAddress": {
           "type": "string"
         },

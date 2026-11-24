@@ -24,7 +24,7 @@ annotations:
     - name: source
       url: https://github.com/opensoha/soha
     - name: docs
-      url: https://docs.opensoha.dev/
+      url: https://docs.opensoha.com/
   artifacthub.io/changes: |
     - kind: changed
       description: Use Soha v0.1.12 with the updated Kubernetes workbench, workload revision history, and resource relationships.

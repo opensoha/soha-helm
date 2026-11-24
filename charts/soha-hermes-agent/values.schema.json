@@ -19,7 +19,8 @@
           "type": "object",
           "properties": {
             "name": { "type": "string" },
-            "key": { "type": "string" }
+            "key": { "type": "string" },
+            "revision": { "type": "string" }
           }
         }
       }

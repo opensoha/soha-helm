@@ -1,4 +1,9 @@
+.DS_Store
+.git/
 .helmignore
+__pycache__/
+*.py[cod]
 *.tgz
 artifacthub-repo.yml
 artifacthub-repo.yml.example
+tests/

@@ -1,5 +1,5 @@
 {{- if .Values.networkRuntime.enabled }}
-{{- $tag := default .Chart.AppVersion .Values.image.tag }}
+{{- $tag := default (printf "v%s" (trimPrefix "v" .Chart.AppVersion)) .Values.image.tag }}
 {{- if regexMatch "^v?0\\.1\\.[0-8]$" $tag }}
 {{- fail "networkRuntime requires an image containing /app/network-control and /app/ingest; set image.tag to a tested build (for example local), not a release before v0.1.9" }}
 {{- end }}
@@ -126,6 +126,10 @@ spec:
         {{- include "soha.selectorLabels" . | nindent 8 }}
     spec:
       automountServiceAccountToken: false
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       terminationGracePeriodSeconds: 30
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
@@ -286,6 +290,10 @@ spec:
         {{- include "soha.selectorLabels" . | nindent 8 }}
     spec:
       automountServiceAccountToken: false
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       terminationGracePeriodSeconds: 30
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}

@@ -321,3 +321,97 @@ hindsight:
   resources:
     requests: {cpu: 100m, memory: 512Mi}
     limits: {cpu: "2", memory: 2Gi}
+
+# Optional Workspace App Hosting data-plane gateway; serves *.appsDomain and never runs inside Core.
+appGateway:
+  enabled: false
+  replicas: 2
+  # Optional image override (string "repo:tag" or repository/tag/pullPolicy map); defaults to the chart's main image.
+  image:
+    repository: ""
+    tag: ""
+    pullPolicy: ""
+  appsDomain: ""
+  publicScheme: https
+  httpRedirectPort: 0
+  publicCoreUrl: ""
+  # Empty derives http://<fullname>:<service.port>.
+  coreUrl: ""
+  trustedProxies: []
+  # 0s enforces strict per-request Core authorization checks so audience narrowing/revocation takes effect immediately across replicas.
+  decisionCacheTtl: 0s
+  # Required when enabled. Holds gateway-token and cookie-secret keys (32+ byte secret).
+  existingSecret: ""
+  gatewayTokenKey: gateway-token
+  cookieSecretKey: cookie-secret
+  secretRevision: ""
+  tls:
+    existingSecret: ""
+    certKey: tls.crt
+    keyKey: tls.key
+  s3:
+    endpoint: ""
+    bucket: ""
+    region: us-east-1
+    prefix: ""
+    pathStyle: true
+    bucketEndpoint: false
+    insecure: false
+    # Required when enabled. Holds access-key-id and secret-access-key keys.
+    existingSecret: ""
+    accessKeyIdKey: access-key-id
+    secretAccessKeyKey: secret-access-key
+  service:
+    type: ClusterIP
+    port: 8090
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    tlsSecretName: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# Optional dynamic App Hosting data plane (Knative runtime + BuildKit builds). Requires appGateway.
+appHostingDynamic:
+  enabled: false
+  # Distinct, pre-existing namespaces owned by the Soha Operator; must not be the release namespace.
+  runtimeNamespace: ""
+  buildNamespace: ""
+  clusterDomain: cluster.local
+  # Pre-existing Secret in the release namespace consumed only by Core. dsnKey must grant
+  # least-privilege access to the isolated app-data database; key encrypts app data.
+  appDataExistingSecret: ""
+  dsnKey: dsn
+  keyKey: key
+  # Required positive when enabled.
+  maxPoolBytes: 0
+  # Fixed IPv4 /32 App Data endpoint reachable from hosted apps.
+  appDataCIDR: ""
+  appDataPort: 5432
+  # All route-entry Pods for the dedicated Knative installation, including the
+  # cluster-local ingress and activator. The chart restricts their inbound traffic.
+  knativePrivateIngress: []
+  # Required image/config inputs provisioned by the Soha Operator when enabled.
+  buildClientImage: ""
+  nodeBaseImage: ""
+  pythonBaseImage: ""
+  registryRepository: ""
+  buildRegistrySecret: ""
+  # Optional dedicated Secret in the release namespace. The fixed `authorization`
+  # key enables scoped registry cleanup for manifests under registryRepository.
+  registryCleanupExistingSecret: ""
+  buildkitAddress: ""
+  buildkitTLSSecret: ""
+  # Must be an HTTPS origin.
+  buildSourceOrigin: ""
+  # Optional RuntimeClass for build Jobs.
+  buildRuntimeClass: ""

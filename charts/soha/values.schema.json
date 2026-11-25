@@ -1459,6 +1459,400 @@
           }
         }
       ]
+    },
+    "appGateway": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "replicas": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 128
+        },
+        "image": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "repository": {
+                  "type": "string"
+                },
+                "tag": {
+                  "type": "string"
+                },
+                "pullPolicy": {
+                  "type": "string",
+                  "enum": [
+                    "",
+                    "Always",
+                    "IfNotPresent",
+                    "Never"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "appsDomain": {
+          "type": "string"
+        },
+        "publicScheme": {
+          "type": "string",
+          "enum": [
+            "https",
+            "http"
+          ]
+        },
+        "httpRedirectPort": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65535
+        },
+        "publicCoreUrl": {
+          "type": "string"
+        },
+        "coreUrl": {
+          "type": "string"
+        },
+        "trustedProxies": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "decisionCacheTtl": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m|h)([0-9]+(ms|s|m|h))*$"
+        },
+        "existingSecret": {
+          "type": "string",
+          "maxLength": 253
+        },
+        "gatewayTokenKey": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]+$",
+          "maxLength": 253
+        },
+        "cookieSecretKey": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]+$",
+          "maxLength": 253
+        },
+        "secretRevision": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "tls": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "existingSecret": {
+              "type": "string",
+              "maxLength": 253
+            },
+            "certKey": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._-]+$",
+              "maxLength": 253
+            },
+            "keyKey": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._-]+$",
+              "maxLength": 253
+            }
+          }
+        },
+        "s3": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "endpoint": {
+              "type": "string"
+            },
+            "bucket": {
+              "type": "string"
+            },
+            "region": {
+              "type": "string"
+            },
+            "prefix": {
+              "type": "string"
+            },
+            "pathStyle": {
+              "type": "boolean"
+            },
+            "bucketEndpoint": {
+              "type": "boolean"
+            },
+            "insecure": {
+              "type": "boolean"
+            },
+            "existingSecret": {
+              "type": "string",
+              "maxLength": 253
+            },
+            "accessKeyIdKey": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._-]+$",
+              "maxLength": 253
+            },
+            "secretAccessKeyKey": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._-]+$",
+              "maxLength": 253
+            }
+          }
+        },
+        "service": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "ClusterIP",
+                "NodePort",
+                "LoadBalancer"
+              ]
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          }
+        },
+        "ingress": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "className": {
+              "type": "string"
+            },
+            "annotations": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "tlsSecretName": {
+              "type": "string",
+              "maxLength": 253
+            }
+          }
+        },
+        "resources": {
+          "type": "object"
+        },
+        "nodeSelector": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "tolerations": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "affinity": {
+          "type": "object"
+        }
+      }
+    },
+    "appHostingDynamic": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "runtimeNamespace": {
+          "type": "string",
+          "maxLength": 63
+        },
+        "buildNamespace": {
+          "type": "string",
+          "maxLength": 63
+        },
+        "clusterDomain": {
+          "type": "string",
+          "minLength": 1
+        },
+        "appDataExistingSecret": {
+          "type": "string",
+          "maxLength": 253
+        },
+        "dsnKey": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]+$",
+          "maxLength": 253
+        },
+        "keyKey": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]+$",
+          "maxLength": 253
+        },
+        "maxPoolBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "appDataCIDR": {
+          "type": "string"
+        },
+        "appDataPort": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "knativePrivateIngress": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["namespace", "podLabels"],
+            "properties": {
+              "namespace": {
+                "type": "string",
+                "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+                "maxLength": 63
+              },
+              "podLabels": {
+                "type": "object",
+                "minProperties": 1,
+                "additionalProperties": { "type": "string", "minLength": 1 }
+              }
+            }
+          }
+        },
+        "buildClientImage": {
+          "type": "string"
+        },
+        "nodeBaseImage": {
+          "type": "string"
+        },
+        "pythonBaseImage": {
+          "type": "string"
+        },
+        "registryRepository": {
+          "type": "string"
+        },
+        "buildRegistrySecret": {
+          "type": "string",
+          "maxLength": 253
+        },
+        "registryCleanupExistingSecret": {
+          "type": "string",
+          "maxLength": 253
+        },
+        "buildkitAddress": {
+          "type": "string"
+        },
+        "buildkitTLSSecret": {
+          "type": "string",
+          "maxLength": 253
+        },
+        "buildSourceOrigin": {
+          "type": "string"
+        },
+        "buildRuntimeClass": {
+          "type": "string"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            },
+            "required": [
+              "enabled"
+            ]
+          },
+          "then": {
+            "required": [
+              "runtimeNamespace",
+              "buildNamespace",
+              "appDataExistingSecret",
+              "maxPoolBytes",
+              "appDataCIDR",
+              "buildClientImage",
+              "nodeBaseImage",
+              "pythonBaseImage",
+              "registryRepository",
+              "buildRegistrySecret",
+              "buildkitAddress",
+              "buildkitTLSSecret",
+              "buildSourceOrigin"
+            ],
+            "properties": {
+              "runtimeNamespace": {
+                "minLength": 1
+              },
+              "buildNamespace": {
+                "minLength": 1
+              },
+              "appDataExistingSecret": {
+                "minLength": 1
+              },
+              "dsnKey": {
+                "minLength": 1
+              },
+              "keyKey": {
+                "minLength": 1
+              },
+              "maxPoolBytes": {
+                "minimum": 1
+              },
+              "appDataCIDR": {
+                "minLength": 1
+              },
+              "clusterDomain": {
+                "minLength": 1
+              },
+              "buildClientImage": {
+                "minLength": 1
+              },
+              "nodeBaseImage": {
+                "minLength": 1
+              },
+              "pythonBaseImage": {
+                "minLength": 1
+              },
+              "registryRepository": {
+                "minLength": 1
+              },
+              "buildRegistrySecret": {
+                "minLength": 1
+              },
+              "buildkitAddress": {
+                "minLength": 1
+              },
+              "buildkitTLSSecret": {
+                "minLength": 1
+              },
+              "buildSourceOrigin": {
+                "minLength": 1,
+                "pattern": "^https://[^\\s]+$"
+              }
+            }
+          }
+        }
+      ]
     }
   },
   "allOf": [

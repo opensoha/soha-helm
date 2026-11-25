@@ -351,5 +351,202 @@ proof before uninstalling workloads; Helm uninstall is not a proven drain or
 safe stop. An upgrade reapplies `radiusRuntime.replicas` and may replace the
 Pod template: drain and stop the managed pool before such maintenance, then
 renew changed pins before resuming. Do not delete retained PVCs or credentials as an implicit uninstall
-step. A reinstall/replacement UID or template change requires renewed installer
+ step. A reinstall/replacement UID or template change requires renewed installer
 pins; never substitute fixture values from `tests/radius-values.json`.
+
+## Optional Workspace App Hosting gateway (`appGateway`)
+
+`appGateway.enabled` defaults to `false`. When enabled, the chart deploys an
+independent `<fullname>-app-gateway` `Deployment` (default `2` replicas),
+`Service` (`ClusterIP` on port `8090`), and optional wildcard `Ingress`
+(`*.<appsDomain>`) so browser traffic to hosted workspace apps never traverses
+the Soha Core control-plane Pod.
+
+Supply an image build containing `/usr/local/bin/soha-app-gateway` (either via
+the chart's main `image` or an explicit `appGateway.image` override; releases
+through `v0.1.12` predate `soha-app-gateway`) and apply the matching Core
+PostgreSQL migrations (`0154_app_hosting.sql`) before enabling the gateway.
+
+All gateway and S3 credentials are Secret-backed only; passing inline secret
+values in Helm values fails schema/template validation:
+
+1. `appGateway.existingSecret` (required): dedicated Secret in the release
+   namespace holding `gateway-token` (customizable via `gatewayTokenKey`, paired
+   with Core's rotated App Hosting gateway token) and `cookie-secret`
+   (customizable via `cookieSecretKey`, 32+ random bytes for Host-only session
+   and auth-state signing).
+2. `appGateway.s3.existingSecret` (required): dedicated Secret holding
+   least-privilege read-only object-storage credentials (`access-key-id` and
+   `secret-access-key`, customizable via `accessKeyIdKey` and
+   `secretAccessKeyKey`).
+
+```yaml
+image:
+  repository: ghcr.io/opensoha/soha
+  tag: local
+appGateway:
+  enabled: true
+  replicas: 2
+  appsDomain: apps.example.com
+  publicCoreUrl: https://soha.example.com
+  trustedProxies:
+    - 10.42.0.0/16
+  decisionCacheTtl: 0s
+  existingSecret: soha-app-gateway-auth
+  s3:
+    endpoint: https://minio.internal:9000
+    bucket: soha-hosted-apps
+    region: us-east-1
+    prefix: hosted-apps
+    pathStyle: true
+    insecure: false
+    existingSecret: soha-app-gateway-s3
+  ingress:
+    enabled: true
+    className: nginx
+    tlsSecretName: soha-apps-wildcard-tls
+```
+
+ Key parameters under `appGateway`:
+
+- `replicas` (default `2`), `image` (optional `{repository, tag, pullPolicy}`
+  override defaulting to the chart's main image).
+- `appsDomain` (bare domain such as `apps.example.com`; wildcard Ingress renders
+  `*.<appsDomain>`), `publicScheme` (`https` by default), `httpRedirectPort`
+  (`0` disabled by default; when `> 0`, enables `308` HTTP-to-HTTPS redirect).
+- `publicCoreUrl` (browser-facing Core URL for SSO login redirects), `coreUrl`
+  (internal Core URL for ticket exchange and per-request access checks; defaults
+  to `http://<fullname>:<service.port>`), `trustedProxies`, `decisionCacheTtl`
+  (`0s` by default for immediate per-request revocation across replicas).
+- `existingSecret`, `gatewayTokenKey` (`gateway-token`), `cookieSecretKey`
+  (`cookie-secret`), `secretRevision` (bump to roll Pods after in-place Secret
+  rotation), and optional direct `tls` (`existingSecret`, `certKey`, `keyKey`).
+- `s3` (`endpoint`, `bucket`, `region`, `prefix`, `pathStyle`, `bucketEndpoint`, `insecure`,
+  `existingSecret`, `accessKeyIdKey`, `secretAccessKeyKey`).
+  Set `bucketEndpoint: true` for a trusted HTTPS domain already bound to the
+  configured bucket. Disable `pathStyle` and `insecure` and match the regional
+  signing and bucket settings on the Core storage integration.
+- `service` (`type`, `port`), `ingress` (`enabled`, `className`, `annotations`,
+  `tlsSecretName`), `resources`, `nodeSelector`, `tolerations`, `affinity`.
+- Probes run against the dedicated internal health listener (`:8091` `/healthz`
+  and `/readyz`), while Pods run non-root (`10001:10001`), read-only root
+  filesystem, `RuntimeDefault` seccomp, all Linux capabilities dropped, and
+  `automountServiceAccountToken: false`.
+
+## Optional dynamic App Hosting runtime (`appHostingDynamic`)
+
+`appHostingDynamic.enabled` defaults to `false`. When enabled, Core receives
+the Knative runtime/BuildKit build configuration and a dedicated ServiceAccount
+(`<fullname>-app-hosting`) with namespaced RBAC; no runtime or build workload is
+created by this chart. Enabling it requires `appGateway.enabled=true` and
+`appGateway.decisionCacheTtl=0s` so revocation takes effect immediately.
+
+Prerequisites are administrator/Operator-provisioned and pre-existing:
+
+- `runtimeNamespace` and `buildNamespace`: distinct namespaces that differ from
+  the release namespace. The chart does not create namespaces. The Soha
+  Operator (or the administrator) provisions them, the registry pull Secret,
+  the BuildKit TLS Secret, the app-data admin Secret, and the optional
+  `buildRuntimeClass`.
+- `appDataExistingSecret`: a dedicated Secret in the release namespace consumed
+  only by Core, holding `dsnKey` (least-privilege DSN for the isolated app-data
+  database) and `keyKey` (stable key for deriving per-revision credentials). It must differ from the
+  chart config Secret and the gateway Secret. `maxPoolBytes` must be positive.
+- `buildClientImage`, `nodeBaseImage`, `pythonBaseImage`, `registryRepository`,
+  `buildRegistrySecret`, `buildkitAddress`, `buildkitTLSSecret`, and
+  `buildSourceOrigin` (the MinIO HTTPS origin) are required build inputs.
+  Provide the client and both base images as digest references.
+
+| Optional field | Behavior |
+| --- | --- |
+| `buildRuntimeClass` | Selects the RuntimeClass for build Jobs when the cluster provides one. |
+| `registryCleanupExistingSecret` | Names a dedicated release-namespace Secret whose fixed `authorization` key enables scoped registry cleanup. Leave unset to preserve shared-repository behavior without cleanup. |
+
+The `authorization` value must be a dedicated credential for the HTTPS registry,
+using either HTTP Basic authentication with base64-encoded credentials or Bearer
+authentication. Scope it to deleting manifests in child repositories owned by
+this installation. Build/publish and pull credentials remain separate and need
+permissions only under the configured `registryRepository` prefix. Registry
+garbage collection performs the physical blob removal after Core deletes the
+manifests. Unsetting `registryCleanupExistingSecret` omits the
+`SOHA_APP_HOSTING_REGISTRY_CLEANUP_AUTHORIZATION` environment variable, keeps
+the shared repository behavior, and leaves legacy images without cleanup.
+
+RBAC: the Core ServiceAccount is bound in `runtimeNamespace` to
+`serving.knative.dev/services` (`get`, `create`, `delete`), `secrets`
+(`get`, `create`, `delete`), and `pods` (`list` for redacted container states).
+In `buildNamespace` it can access `batch/jobs` (`get`,
+`create`, `update`, `delete`), `pods` (`list`), and `secrets` (`get`,
+`create`). Core's Pod token is mounted only while the feature is enabled; the
+app gateway remains `automountServiceAccountToken: false` and receives only
+`SOHA_APP_GATEWAY_RUNTIME_NAMESPACE` and
+`SOHA_APP_GATEWAY_RUNTIME_CLUSTER_DOMAIN` (from `clusterDomain`, default
+`cluster.local`).
+
+Use a dedicated Knative installation for hosted apps. In `knativePrivateIngress`,
+select every Pod that can relay an HTTP request to a hosted revision, including
+the internal ingress and activator. The chart limits who may send traffic to
+those Pods to this release's app-gateway and administrator-controlled Knative
+namespaces. Managed revision Pods accept traffic from the selected relay Pods.
+The stock Knative Autoscaler in those namespaces can reach only the queue-proxy
+autoscaling metrics port (TCP 9090). Keep its standard Pod labels and verify
+metrics collection before testing scale-to-zero.
+Egress is limited to cluster DNS (`kube-system`/`k8s-app: kube-dns`) and the
+fixed App Data IPv4 endpoint (`appDataCIDR` as `/32`, on `appDataPort`).
+Before enabling hosted applications, verify that the selectors match the
+installed Pods, the CNI enforces the policies, no additive policy grants
+broader access, and neither ingress nor activator has a public listener.
+
+The runtime and private-ingress NetworkPolicies carry Helm's
+`helm.sh/resource-policy: keep` annotation. Helm retains them when this feature
+is disabled, the release is rolled back to a revision without the policies, or
+the release is uninstalled. Do not remove or broaden these policies while any
+hosted Knative Services or revision Pods remain: they can outlive Core and the
+release. Before disabling, rolling back, or uninstalling, verify the installed
+policies have this annotation and still select all runtime and relay Pods; older
+chart revisions may not provide this protection. A rollback to an older revision
+can also restore different policy definitions, so verify the resulting policies
+and CNI enforcement before allowing traffic. Retained resources become orphaned
+on uninstall and may prevent reinstalling the release until an administrator
+reconciles their Helm ownership. Changing namespaces or selectors can leave old
+policies behind; reconcile both old and new targets without an isolation gap.
+
+For decommissioning, first stop new deployments and delete all hosted Knative
+Services, then verify that their revisions and Pods are gone. Only then may an
+administrator explicitly delete the retained NetworkPolicies, after checking
+that no other workload depends on them. Keep the dedicated Knative installation
+private throughout this process.
+
+Attach a dedicated, pull-only image registry Secret to the runtime namespace
+ServiceAccount. Keep `buildRegistrySecret` in the build namespace with the
+publisher credentials. BuildKit access uses mTLS through `buildkitTLSSecret`.
+
+```yaml
+appGateway:
+  enabled: true
+  decisionCacheTtl: 0s
+appHostingDynamic:
+  enabled: true
+  runtimeNamespace: soha-runtime
+  buildNamespace: soha-build
+  appDataExistingSecret: soha-app-data
+  maxPoolBytes: 67108864
+  appDataCIDR: 10.42.8.16/32
+  appDataPort: 5432
+  knativePrivateIngress:
+    - namespace: kourier-system
+      podLabels: {app: 3scale-kourier-gateway}
+    - namespace: knative-serving
+      podLabels: {app: activator}
+  # Replace each digest placeholder with a verified 64-character SHA-256 digest.
+  buildClientImage: registry.example/build-client@sha256:<client-digest>
+  nodeBaseImage: registry.example/node@sha256:<node-digest>
+  pythonBaseImage: registry.example/python@sha256:<python-digest>
+  registryRepository: registry.example/apps
+  buildRegistrySecret: soha-build-registry
+  # Optional; omit to keep shared-repository behavior without image cleanup.
+  registryCleanupExistingSecret: soha-registry-cleanup
+  buildkitAddress: tcp://buildkit.soha-build:1234
+  buildkitTLSSecret: soha-buildkit-tls
+  buildSourceOrigin: https://minio.example.com
+```
